@@ -1,2 +1,2 @@
 # CIS-4375-StarSolutions
-Current repo
+This is the current state of our project's repo
