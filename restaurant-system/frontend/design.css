@@ -1,0 +1,134 @@
+/* Reset box-sizing */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Body background */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #FFFDED; /* Ivory */
+    color: #001011; /* Rich black for text */
+    line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #001011; /* Rich black */
+    color: #FFFDED; /* Ivory text */
+}
+
+.navbar .logo a {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-decoration: none;
+    color: #FFFDED;
+}
+
+/* Nav links */
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links li a {
+    text-decoration: none;
+    color: #FFFDED;
+    font-size: 1rem;
+    transition: color 0.3s;
+}
+
+.nav-links li a:hover {
+    color: #F2542D; /* Cinnabar highlight */
+}
+
+/* Main content */
+main {
+    padding: 2rem;
+}
+
+/* Footer */
+footer {
+    background-color: #001011; /* Rich black */
+    color: #FFFDED; /* Ivory */
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+/* Buttons (example) */
+button, .btn {
+    background-color: #F2542D; /* Cinnabar */
+    color: #FFFDED;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover, .btn:hover {
+    background-color: #0681B1; /* Cerulean on hover */
+}
+
+.welcome-text {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 2rem;
+    color: #F2542D; /* Cinnabar */
+}
+
+/* ----------------------------------------------------------------------- */
+
+.log-in-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-bottom: 37.1rem;
+
+}
+
+/* Text field styles: rounded corners, comfortable padding, and accessible focus */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
+    width: 100%;
+    max-width: 420px;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #cfd8dc; /* subtle cool border */
+    border-radius: 8px; /* rounded corners */
+    background: #ffffff;
+    color: inherit;
+    font-size: 1rem;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* Slightly more pronounced radius for larger inputs */
+textarea {
+    min-height: 120px;
+    border-radius: 10px;
+}
+
+/* Focus state for accessibility */
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #0681B1; /* Cerulean accent */
+    box-shadow: 0 0 0 4px rgba(6,129,177,0.12);
+}
+
