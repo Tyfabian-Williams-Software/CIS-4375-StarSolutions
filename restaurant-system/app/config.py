@@ -1,0 +1,1 @@
+SQLALCHEMY_DATABASE_URI = "mysql+pymysql://admin:abc123g13!@restaurant-db13.cf8aiia80ui1.us-east-1.rds.amazonaws.com:3306/restaurant_db13"
