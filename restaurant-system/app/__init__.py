@@ -1,32 +1,32 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_socketio import SocketIO
-from flask_cors import CORS
-import os
+from flask_login import LoginManager
+from .config import Config
+from .sockets import init_sockets, socketio
 
 db = SQLAlchemy()
 migrate = Migrate()
-socketio = SocketIO(cors_allowed_origins="*")
+login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
-
-    # Load config
-    from .config import Config
     app.config.from_object(Config)
 
-    # Init extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    socketio.init_app(app)
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
 
-    # Import blueprints/routes
-    from .routes import api_bp
-    app.register_blueprint(api_bp, url_prefix="/api")
+    # Register blueprints
+    from app.auth import auth_bp
+    from app.routes import routes_bp
+    from app.admin import admin_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(routes_bp)
+    app.register_blueprint(admin_bp)
 
-    # Import sockets
-    from . import sockets  # noqa: F401 (registers events)
+    # Initialize sockets
+    init_sockets(app)
 
     return app
