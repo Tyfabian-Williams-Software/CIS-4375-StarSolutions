@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navbar & Footer | Joyeuse's Caribbean Creole Cuisine & Bar</title>
+
+    <style>
+        /* Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #FFFDED; /* Ivory */
+            color: #001011; /* Rich black */
+            line-height: 1.6;
+        }
+
+        /* ============ NAVBAR ============ */
+        .site-header {
+            background-color: #001011; /* Rich black */
+            color: #FFFDED; /* Ivory */
+        }
+
+        .site-navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        .site-navbar__logo a {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-decoration: none;
+            color: #FFFDED;
+        }
+
+        .site-navbar__menu {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .site-navbar__menu-item a {
+            text-decoration: none;
+            color: #FFFDED;
+            font-size: 1rem;
+            transition: color 0.3s;
+        }
+
+        .site-navbar__menu-item a:hover {
+            color: #F2542D; /* Cinnabar */
+        }
+
+        /* ============ FOOTER ============ */
+        .site-footer {
+            background-color: #001011; /* Rich black */
+            color: #FFFDED; /* Ivory */
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.9rem;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .site-footer__text {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- ============ HEADER / NAVBAR ============ -->
+    <header class="site-header">
+        <nav class="site-navbar">
+            <div class="site-navbar__logo">
+                <a href="/restaurant-system/templates/home.html">Joyeuse's Caribbean Creole Cuisine & Bar</a>
+            </div>
+            <ul class="site-navbar__menu">
+                <li class="site-navbar__menu-item"><a href="/restaurant-system/templates/home.html">Home</a></li>
+                <li class="site-navbar__menu-item"><a href="front.html">Front</a></li>
+                <li class="site-navbar__menu-item"><a href="kitchen.html">Kitchen</a></li>
+                <li class="site-navbar__menu-item"><a href="/reservations.html">Reservations</a></li>
+                <li class="site-navbar__menu-item"><a href="login.html">Login</a></li>
+            </ul>
+        </nav>
+    </header>
+
+
+    <!-- ============ FOOTER ============ -->
+    <footer class="site-footer">
+        <p class="site-footer__text">
+            &copy; 2025 Joyeuse's Caribbean Creole Cuisine & Bar. All rights reserved.
+        </p>
+    </footer>
+</body>
+</html>
