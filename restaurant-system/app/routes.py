@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
-from app.models import db, Order
+from app import db
+from app.models import Order
 from app.sockets import socketio
 
 routes_bp = Blueprint("routes", __name__)
@@ -36,6 +37,8 @@ def kitchen():
         order_id = request.form["order_id"]
         status = request.form["status"]
         order = Order.query.get(order_id)
+        if order is None:
+            return "Order not found", 404
         order.status = status
         db.session.commit()
 
