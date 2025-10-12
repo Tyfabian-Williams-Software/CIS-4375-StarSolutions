@@ -58,77 +58,71 @@
             color: #F2542D; /* Cinnabar */
         }
 
-        /* ============ MAIN CONTENT ============ */
-        main {
-            padding: 2rem;
-        }
-
-        .welcome-text {
-            text-align: center;
-            margin-top: 2rem;
-            font-size: 2rem;
-            color: #F2542D; /* Cinnabar */
-        }
-
-        /* Buttons */
-        button, .btn {
-            background-color: #F2542D; /* Cinnabar */
-            color: #FFFDED;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        button:hover, .btn:hover {
-            background-color: #0681B1; /* Cerulean */
-        }
-
-        /* ============ FORM STYLES ============ */
-        .log-in-form {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-            margin-top: 2rem;
-            padding-bottom: 37.1rem;
-        }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="search"],
-        textarea,
-        select {
+        /* ============ HERO SECTION ============ */
+        .hero-section {
+            position: relative;
             width: 100%;
-            max-width: 420px;
-            padding: 0.6rem 0.8rem;
-            border: 1px solid #cfd8dc;
-            border-radius: 8px;
-            background: #ffffff;
-            color: inherit;
-            font-size: 1rem;
-            transition: box-shadow 0.15s ease, border-color 0.15s ease;
+            max-width: 1200px;
+            margin: 0 auto;
+            overflow: hidden;
+            background-color: #FFFDED; /* Ivory background blend */
         }
 
-        textarea {
-            min-height: 120px;
-            border-radius: 10px;
+        .hero-video-container {
+            position: relative;
+            height: 400px;
+            overflow: hidden;
         }
 
-        input:focus,
-        textarea:focus,
-        select:focus {
-            outline: none;
-            border-color: #0681B1;
-            box-shadow: 0 0 0 4px rgba(6,129,177,0.12);
+        .hero-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Bottom fade into page background */
+        .video-fade {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 150px;
+            width: 100%;
+            background: linear-gradient(to bottom, rgba(255, 253, 237, 0) 0%, #FFFDED 100%);
+            pointer-events: none;
+        }
+
+        .hero-text {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #001011;
+        }
+
+        .hero-text h1 {
+            color: #F2542D; /* Cinnabar */
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-text p {
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-video-container {
+                height: 250px;
+            }
+            .hero-text h1 {
+                font-size: 1.6rem;
+            }
         }
 
         /* ============ FOOTER ============ */
         .site-footer {
-            background-color: #001011; /* Rich black */
-            color: #FFFDED; /* Ivory */
+            background-color: #001011;
+            color: #FFFDED;
             text-align: center;
             padding: 1rem;
             font-size: 0.9rem;
@@ -157,13 +151,30 @@
         </nav>
     </header>
 
-    <!-- Main content -->
-    <main>
-        <h1 class="welcome-text">Welcome to Joyeuse's Caribbean Creole Cuisine & Bar!</h1>
-        <div>
-            <p>Here at Joyeuse's Caribbean Creole Cuisine & Bar!</p>
+    <!-- Hero Section with Video -->
+    <section class="hero-section">
+        <div class="hero-video-container">
+            <video autoplay muted loop playsinline class="hero-video">
+                <source src="/restaurant-system/static/JsCCC_background_vid.webm" type="video/webm"> <!-- replace section here with other vid if needed-->
+                <source src="/restaurant-system/static/JsCCC_background_vid.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <div class="video-fade"></div>
         </div>
-    </main>
+
+        <div class="hero-text">
+            <h1>Welcome to Joyeuse's Caribbean Creole Cuisine & Bar!</h1>
+            <p>
+                This is <strong>the</strong> Haitian spot — where Creole heat meets island soul. 
+                Come on in and savor Haiti’s bold, unforgettable flavors, one bite at a time!
+                From our tender griot and crispy plantains to spicy pikliz, savory stews, and refreshing island drinks, 
+                every dish is a celebration of home-cooked comfort and Caribbean flair.  
+                Here, the rhythm of Haitian culture blends with the warmth of Florida’s sunshine — 
+                bringing family, flavor, and good vibes together at one table. 
+            </p>
+        </div>
+
+    </section>
 
     <!-- Footer -->
     <footer class="site-footer">
