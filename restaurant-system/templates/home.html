@@ -62,40 +62,70 @@
         .hero-section {
             position: relative;
             width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            overflow: hidden;
+            max-width: 100%;
+            margin: 0;
             background-color: #FFFDED; /* Ivory background blend */
         }
 
         .hero-video-container {
             position: relative;
-            height: 400px;
+            height: 600px;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
         }
 
+        /* Make the video fill the section with no black bars */
         .hero-video {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain; /* fills the full area */ 
+            object-position: center;
             display: block;
         }
 
-        /* Bottom fade into page background */
         .video-fade {
             position: absolute;
             bottom: 0;
             left: 0;
-            height: 150px;
+            height: 80px;
             width: 100%;
             background: linear-gradient(to bottom, rgba(255, 253, 237, 0) 0%, #FFFDED 100%);
             pointer-events: none;
         }
 
-        .hero-text {
+        /* ============ HERO LOGO ============ */
+        .hero-logo {
             text-align: center;
-            padding: 2rem 1rem;
+            margin-top: 2rem; /* pulls it closer to the video fade */
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-logo img {
+            max-width: 350px;
+            height: auto;
+            display: inline-block;
+            border-radius: 0;
+            box-shadow: none;
+            transition: transform 0.3s ease;
+        }
+
+        .hero-logo img:hover {
+            transform: scale(1.05);
+        }
+
+        /* ============ HERO TEXT ============ */
+        .hero-text {
+            position: static;
+            z-index: 1;
+            max-width: 1000px;
+            margin: 0 auto 2rem auto;
+            padding: 1.5rem 2rem;
+            text-align: center;
             color: #001011;
+            background: transparent;
         }
 
         .hero-text h1 {
@@ -114,6 +144,23 @@
             .hero-video-container {
                 height: 250px;
             }
+
+            .hero-logo {
+                margin-top: -20px;
+                margin-bottom: 1rem;
+            }
+
+            .hero-logo img {
+                max-width: 160px;
+            }
+
+            .hero-text {
+                margin: 1rem auto 2rem;
+                padding: 1rem;
+                max-width: 92%;
+                background: rgba(255,255,255,0.95);
+            }
+
             .hero-text h1 {
                 font-size: 1.6rem;
             }
@@ -141,7 +188,7 @@
     <header class="site-header">
         <nav class="site-navbar">
             <div class="site-navbar__logo">
-                <a href="home.html">🍽️ Joyeuse's Caribbean Creole Cuisine & Bar</a>
+                <a href="home.html">Joyeuse's Caribbean Creole Cuisine & Bar</a>
             </div>
             <ul class="site-navbar__menu">
                 <li class="site-navbar__menu-item"><a href="front.html">Front</a></li>
@@ -155,11 +202,16 @@
     <section class="hero-section">
         <div class="hero-video-container">
             <video autoplay muted loop playsinline class="hero-video">
-                <source src="/restaurant-system/static/JsCCC_background_vid.webm" type="video/webm"> <!-- replace section here with other vid if needed-->
+                <source src="/restaurant-system/static/JsCCC_background_vid.webm" type="video/webm">
                 <source src="/restaurant-system/static/JsCCC_background_vid.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
             <div class="video-fade"></div>
+        </div>
+
+        <!-- Logo under video -->
+        <div class="hero-logo">
+            <img src="/restaurant-system/static/J'sCCClogo.png" alt="Joyeuse's Caribbean Creole Cuisine & Bar Logo">
         </div>
 
         <div class="hero-text">
