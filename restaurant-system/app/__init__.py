@@ -22,9 +22,12 @@ def create_app():
     from app.auth import auth_bp
     from app.routes import routes_bp
     from app.admin import admin_bp
+    from app.views import views_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(routes_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(views_bp)
 
     # Initialize sockets
     init_sockets(app)
