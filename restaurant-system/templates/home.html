@@ -181,6 +181,25 @@
         .site-footer__text {
             margin: 0;
         }
+
+        /* ============ LOGIN BUTTON (HOME PAGE) ============ */
+        .nav-login-btn {
+            background-color: #F2542D; /* Cinnabar */
+            color: #FFFDED; /* Ivory text */
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-login-btn:hover {
+            background-color: #0681B1; /* Cerulean hover */
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -191,9 +210,9 @@
                 <a href="home.html">Joyeuse's Caribbean Creole Cuisine & Bar</a>
             </div>
             <ul class="site-navbar__menu">
-                <li class="site-navbar__menu-item"><a href="front.html">Front</a></li>
-                <li class="site-navbar__menu-item"><a href="kitchen.html">Kitchen</a></li>
-                <li class="site-navbar__menu-item"><a href="login.html">Login</a></li>
+                <li class="site-navbar__menu-item">
+                    <a href="login.html" class="nav-login-btn">Employee? Log In here!</a>
+                </li>
             </ul>
         </nav>
     </header>

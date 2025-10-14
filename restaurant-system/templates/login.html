@@ -149,6 +149,36 @@
         }
 
         /* ===============================
+           USER ROLE TABS
+        =============================== */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            background-color: #E0E0E0;
+            color: #001011;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s, color 0.3s;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            background-color: #F2542D;
+            color: #FFFDED;
+        }
+
+        .tab.active {
+            background-color: #001011;
+            color: #FFFDED;
+        }
+
+        /* ===============================
            FOOTER
         =============================== */
         .site-footer {
@@ -184,14 +214,23 @@
     <!-- Main content -->
     <main>
         <h1 class="welcome-text">Login</h1>
+
         <div class="login-container">
-            <form class="login-form">
+            <!-- Tabs for selecting user role -->
+            <div class="tab-container">
+                <div class="tab active" data-role="admin">Admin</div>
+                <div class="tab" data-role="chef">Chef</div>
+                <div class="tab" data-role="server">Server</div>
+            </div>
+
+            <!-- Login Form -->
+            <form class="login-form" id="loginForm">
                 <input type="text" class="login-form__input" placeholder="Username" required>
                 <input type="password" class="login-form__input" placeholder="Password" required>
 
                 <div class="login-form__actions">
                     <a href="#" class="login-form__forgot">Forgot password?</a>
-                    <a class="login-form__button" href="admin/dashboard.html">Log In</a>
+                    <button type="submit" class="login-form__button">Log In</button>
                 </div>
             </form>
         </div>
@@ -201,5 +240,34 @@
     <footer class="site-footer">
         <p class="site-footer__text">&copy; 2025 Joyeuse's Caribbean Creole Cuisine & Bar. All rights reserved.</p>
     </footer>
+
+    <script>
+        // Handle tab switching
+        const tabs = document.querySelectorAll('.tab');
+        let selectedRole = 'admin'; // default
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                selectedRole = tab.dataset.role;
+            });
+        });
+
+        // Handle login form redirect
+        const loginForm = document.getElementById('loginForm');
+        loginForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // Redirect to the corresponding dashboard based on role
+            if (selectedRole === 'admin') {
+                window.location.href = 'admin/dashboard.html';
+            } else if (selectedRole === 'chef') {
+                window.location.href = 'kitchen.html';
+            } else if (selectedRole === 'server') {
+                window.location.href = 'front.html';
+            }
+        });
+    </script>
 </body>
 </html>
