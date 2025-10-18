@@ -4,6 +4,7 @@ from app import db
 from app.models import Order, OrderLine, Product, Customer
 from app.sockets import socketio
 from app.utils import roles_required
+from app.validators import validate_order_payload, validate_order_line_payload
 
 routes_bp = Blueprint("routes", __name__)
 
@@ -111,20 +112,16 @@ def api_get_order(order_id):
 @login_required
 @roles_required("front", "admin")
 def api_create_order():
-
     data = request.get_json(silent=True) or {}
-    # Expect payload: { "customer_id": 1, "order_type": "dine_in", "lines": [ {"product_id": 1, "quantity": 2, "unit_price": 9.99 }, ... ] }
-    customer_id = data.get("customer_id")
-    order_type = data.get("order_type")
-    lines = data.get("lines") or []
-    if not customer_id or not isinstance(lines, list) or len(lines) == 0:
-        return jsonify({"error": "customer_id and non-empty lines array required"}), 400
+    valid, errors, cleaned = validate_order_payload(data)
+    if not valid:
+        return jsonify({"error": "invalid payload", "details": errors}), 400
 
-    order = Order(customer_id=customer_id, order_type=order_type)
+    order = Order(customer_id=cleaned["customer_id"], order_type=cleaned.get("order_type"))
     db.session.add(order)
     db.session.commit()
 
-    for ln in lines:
+    for ln in cleaned["lines"]:
         unit_price = ln.get("unit_price")
         product_id = ln.get("product_id")
         # default unit_price to product price when missing
@@ -186,17 +183,19 @@ def api_update_order_line_status(line_id):
 @roles_required("front", "admin")
 def api_create_order_line():
     data = request.get_json(silent=True) or {}
-    order_id = data.get("order_id")
-    product_id = data.get("product_id")
-    quantity = data.get("quantity", 1)
-    unit_price = data.get("unit_price")
-    if not order_id or not product_id:
-        return jsonify({"error": "order_id and product_id required"}), 400
+    valid, errors, cleaned = validate_order_line_payload(data)
+    if not valid:
+        return jsonify({"error": "invalid payload", "details": errors}), 400
+
+    order_id = cleaned["order_id"]
+    product_id = cleaned["product_id"]
+    quantity = cleaned["quantity"]
+    unit_price = cleaned.get("unit_price")
     # If unit_price not provided, fetch product price
     if unit_price is None and product_id:
         prod = Product.query.get(product_id)
         unit_price = prod.price if prod is not None else None
-    ol = OrderLine(order_id=order_id, product_id=product_id, quantity=quantity, unit_price=unit_price, order_status=data.get("order_status", "pending"))
+    ol = OrderLine(order_id=order_id, product_id=product_id, quantity=quantity, unit_price=unit_price, order_status=cleaned.get("order_status", "pending"))
     db.session.add(ol)
     db.session.commit()
     socketio.emit("order_update", ol.to_dict())
