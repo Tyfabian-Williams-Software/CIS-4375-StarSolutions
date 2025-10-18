@@ -1,5 +1,5 @@
 from app import db
-from app.models import Customer, Product
+from app.models import Customer, Product, Order
 
 # Allowed enums
 ALLOWED_ORDER_TYPES = {"dine_in", "takeout", "delivery"}
@@ -99,6 +99,12 @@ def validate_order_line_payload(data):
     cleaned = {}
     if not isinstance(data, dict):
         return False, ["payload must be a JSON object"], {}
+    # detect unknown fields
+    allowed_keys = {"order_id", "product_id", "quantity", "unit_price", "order_status"}
+    extra = set(data.keys()) - allowed_keys
+    if extra:
+        errors.append(f"unknown fields: {sorted(list(extra))}")
+
     order_id = data.get("order_id")
     product_id = data.get("product_id")
     if order_id is None:
@@ -106,22 +112,23 @@ def validate_order_line_payload(data):
     else:
         try:
             order_id = int(order_id)
-            # existence check for order
-            if db.session.execute("SELECT 1 FROM Orders WHERE Order_ID = :id", {"id": order_id}).fetchone() is None:
+        except (ValueError, TypeError):
+            errors.append("order_id must be an integer")
+        else:
+            if Order.query.get(order_id) is None:
                 errors.append("order not found")
             cleaned["order_id"] = order_id
-        except Exception:
-            errors.append("order_id must be an integer")
     if product_id is None:
         errors.append("product_id is required")
     else:
         try:
             product_id = int(product_id)
+        except (ValueError, TypeError):
+            errors.append("product_id must be an integer")
+        else:
             if Product.query.get(product_id) is None:
                 errors.append("product not found")
             cleaned["product_id"] = product_id
-        except Exception:
-            errors.append("product_id must be an integer")
 
     qty = data.get("quantity", 1)
     try:
