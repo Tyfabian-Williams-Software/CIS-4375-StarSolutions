@@ -115,6 +115,9 @@ def api_create_order():
     data = request.get_json(silent=True) or {}
     valid, errors, cleaned = validate_order_payload(data)
     if not valid:
+        # If errors indicate missing referenced entities, return 404
+        if any("not found" in e.lower() for e in errors):
+            return jsonify({"error": "not found", "details": errors}), 404
         return jsonify({"error": "invalid payload", "details": errors}), 400
 
     order = Order(customer_id=cleaned["customer_id"], order_type=cleaned.get("order_type"))
@@ -185,6 +188,9 @@ def api_create_order_line():
     data = request.get_json(silent=True) or {}
     valid, errors, cleaned = validate_order_line_payload(data)
     if not valid:
+        # Map existence errors to 404 so clients can distinguish validation vs missing resources
+        if any("not found" in e.lower() for e in errors):
+            return jsonify({"error": "not found", "details": errors}), 404
         return jsonify({"error": "invalid payload", "details": errors}), 400
 
     order_id = cleaned["order_id"]
