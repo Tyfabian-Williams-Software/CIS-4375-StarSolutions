@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve restaurant-system
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/restaurant-system
+Environment="PATH=/opt/restaurant-system/.venv/bin"
+ExecStart=/opt/restaurant-system/.venv/bin/gunicorn -c deploy/gunicorn_conf.py run:app
+
+[Install]
+WantedBy=multi-user.target

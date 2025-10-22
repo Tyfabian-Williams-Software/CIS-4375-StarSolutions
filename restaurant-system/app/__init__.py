@@ -17,6 +17,14 @@ def create_app():
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
+    # Return JSON 401 for API requests instead of redirecting to login page.
+    @login_manager.unauthorized_handler
+    def _unauthorized():
+        from flask import request, jsonify, redirect, url_for
+        # Treat requests with JSON content or explicit Accept: application/json as API calls
+        if request.is_json or request.headers.get("Accept", "").lower().startswith("application/json"):
+            return jsonify({"error": "Authentication required"}), 401
+        return redirect(url_for("auth.login"))
 
     # Register blueprints
     from app.auth import auth_bp
