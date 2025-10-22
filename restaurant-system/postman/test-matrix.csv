@@ -1,0 +1,38 @@
+Test ID,Title,Endpoint,Method,Auth,Role,Input (summary),Expected Status,Expected Body Shape,Notes
+1,Orders: Create - happy path,/api/orders,POST,Yes,front,{customer_id, lines:[{product_id,quantity}]},201,{order_id, lines:[...]},Check Location header if present
+2,Orders: Create - missing customer,/api/orders,POST,Yes,front,{lines: [...]},400,{error, details:["customer_id is required"]},
+3,Orders: Create - product not found,/api/orders,POST,Yes,front,{customer_id, lines with bad product_id},404,{error:"not found", details:["product not found"]},
+4,Orders: Create - invalid quantities,/api/orders,POST,Yes,front,{quantity:0},400,{error, details:["quantity must be between 1 and X"]},
+5,Orders: List - authenticated,/api/orders,GET,Yes,any,{},200,{orders:[{order fields}]},
+6,Orders: Get - not found,/api/orders/:id,GET,Yes,any,{},404,{error},
+7,Orders: Update - admin success,/api/orders/:id,PUT,Yes,admin,{order_type, order_price},200,{order fields},
+8,Orders: Update - forbidden for non-admin,/api/orders/:id,PUT,Yes,front,{order_type},403,{error:"Forbidden"},
+9,Orders: Delete - admin,/api/orders/:id,DELETE,Yes,admin,{},204,,
+10,Orders: Concurrency/large payload,/api/orders,POST,Yes,front,{many lines},200/201/429,{},Depends on implementation and limits
+11,OrderLines: Create - happy path,/api/order_lines,POST,Yes,front,{order_id, product_id, quantity},201,{order_line fields},
+12,OrderLines: Create - missing order/product,/api/order_lines,POST,Yes,front,{order_id:999},404,{error:"not found"},
+13,OrderLines: Create - invalid payload,/api/order_lines,POST,Yes,front,{quantity:"abc"},400,{error, details:[...]},
+14,OrderLines: Update Status - kitchen success,/api/order_lines/:id/status,PATCH,Yes,kitchen,{order_status:'ready'},200,{order_line fields},
+15,OrderLines: Update Status - invalid status,/api/order_lines/:id/status,PATCH,Yes,kitchen,{order_status:'invalid'},400,{error, details:[...]},
+16,OrderLines: Delete - admin,/api/order_lines/:id,DELETE,Yes,admin,{},204,,
+17,OrderLines: Bulk update lines,/api/order_lines/bulk,PATCH,Yes,admin,{lines:[{id,status}]},200,{updated:[], failed:[]},Requires implementation
+18,Users(Admin): Create - admin success,/admin/api/users,POST,Yes,admin,{username,password,role},200/201,{username,role,id},password not returned
+19,Users(Admin): Create - duplicate username,/admin/api/users,POST,Yes,admin,{username:existing},400/409,{error},
+20,Users(Admin): List - admin only,/admin/api/users,GET,Yes,admin,{},200,{users:[...]},non-admin -> 403
+21,Users(Admin): Get - not found,/admin/api/users/:id,GET,Yes,admin,{},404,{error},
+22,Users(Admin): Update role - admin only,/admin/api/users/:id,PUT,Yes,admin,{role},200,{username,role},non-admin -> 403
+23,Users(Admin): Delete - admin only,/admin/api/users/:id,DELETE,Yes,admin,{},204,{},Consider preventing self-delete
+24,Auth: Login - success,/login,POST,No (form),any,{username,password},302 redirect or JSON,Admin redirect to dashboard
+25,Auth: Login - failure,/login,POST,No (form),any,{username,wrong},200 login page or 401 (API),
+26,Auth: Logout - clears session,/logout,GET,Yes,any,{},302 redirect then 401 on protected calls,Ensure cookie cleared
+27,Auth: Session cookie persistence,/api/orders,GET,Yes,any,{},200,{},After login, cookie should authorize
+28,Auth: Unauthorized API behavior,/api/order_lines,POST,No,any,{},401,{error:"Authentication required"},Ensure API endpoints return JSON 401
+29,API: Content negotiation and error shape,/api/*,varies,Yes/No,any,{},varies,{error, details?},Consistent JSON errors
+30,Sockets: order_new emitted on create,Websocket,EVENT,Yes,any,{},200/event,{event:'order_new', data:{}},Manual or harness required
+31,Sockets: order_update emitted on status change,Websocket,EVENT,Yes,any,{},200/event,{event:'order_update', data:{}},Manual or harness required
+32,Postman: Export collection & environment,postman export,NA,No,NA,{},NA,NA,Export collection for CI
+33,Newman CI: add run step,CI job,NA,No,NA,{},NA,NA,Add to GitHub Actions/Azure Pipelines
+34,Test docs: Create test run checklist,docs,NA,No,NA,{},NA,NA,Step-by-step QA checklist
+35,Test docs: Hand off grouped test docs,docs,NA,No,NA,{},NA,NA,Printable grouped docs
+36,Refactor: replace Query.get with db.session.get,code,NA,No,NA,{},NA,NA,Refactor to clear warnings
+37,Test: Structured error map,/api/*,varies,Yes/No,any,{},varies,Structured per-field errors optional
