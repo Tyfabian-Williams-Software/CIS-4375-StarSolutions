@@ -13,7 +13,8 @@
     <style>
          :root {
             --accent: #ff6a3d;
-            --header: #0b0f0e;
+            --header-start: #001011;
+            --header-end: #2d2d2d;
         }
         
         html,
@@ -31,7 +32,7 @@
         }
         
         .site-navbar {
-            background: var(--header);
+            background: linear-gradient(to bottom, var(--header-start) 0%, var(--header-start) 55%, var(--header-end) 100%);
         }
         
         .site-navbar .navbar-brand {
@@ -132,7 +133,7 @@
         }
         
         .site-footer {
-            background: var(--header);
+            background: linear-gradient(to top, var(--header-start) 0%, var(--header-start) 65%, var(--header-end) 100%);
             color: #ffffff;
             text-align: center;
             padding: .5rem 0;
