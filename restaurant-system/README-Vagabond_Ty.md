@@ -109,3 +109,5 @@ export WORKER_CLASS=eventlet
 export GUNICORN_WORKERS=2
 docker-compose --env-file .env up -d --build
 ```
+
+If you want, I can add a small `wait-for-db.sh` script to the image so the app waits for the managed DB to be reachable before starting. This is optional for managed DBs that are always available. 

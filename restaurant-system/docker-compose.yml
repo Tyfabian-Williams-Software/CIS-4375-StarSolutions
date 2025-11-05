@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    image: restaurant-system:latest
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - PORT=${PORT:-8000}
+      # APPLICATION secrets should be provided via .env or host environment. For example:
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - WORKER_CLASS=${WORKER_CLASS:-eventlet}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
+    ports:
+      - "8000:8000"
+  # Use image deployed via CI/CD. In development you may mount source, but avoid in prod.
+

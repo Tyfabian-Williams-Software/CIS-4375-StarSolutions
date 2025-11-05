@@ -1,0 +1,75 @@
+/* ============ RESET ============ */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ============ BODY BACKGROUND ============ */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #FFFDED; /* Ivory */
+    color: #001011;            /* Rich black for text */
+    line-height: 1.6;
+    /* layout so footer can be pushed to the bottom when content is short */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ============ NAVBAR ============ */
+.site-header {
+    /* Rich black fading to a light gray at the bottom edge */
+    background-color: #001011; /* fallback */
+    background: linear-gradient(to bottom, #001011 0%, #001011 55%, #2d2d2d 100%);
+    color: #FFFDED;            /* Ivory */
+}
+
+.site-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+}
+
+.site-navbar__logo a {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-decoration: none;
+    color: #FFFDED;
+}
+
+.site-navbar__menu {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+.site-navbar__menu-item a {
+    text-decoration: none;
+    color: #FFFDED;
+    font-size: 1rem;
+    transition: color 0.3s;
+}
+
+.site-navbar__menu-item a:hover {
+    color: #F2542D; /* Cinnabar */
+}
+
+/* ============ FOOTER ============ */
+.site-footer {
+    /* Rich black fading to a light gray at the top edge */
+    background-color: #001011; /* fallback */
+    background: linear-gradient(to top, #001011 0%, #001011 65%, #2d2d2d 100%);
+    color: #FFFDED;            /* Ivory */
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    /* allow footer to be pushed to the bottom when page is short */
+    margin-top: auto;
+    width: 100%;
+}
+
+.site-footer__text {
+    margin: 0;
+}
