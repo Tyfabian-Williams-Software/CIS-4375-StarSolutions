@@ -3,46 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home | Joyeuse's Caribbean Creole Cuisine & Bar</title>
-    <!-- CSS Reset -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css/normalize.css">
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="design.css">
+    <title>Navbar & Footer | Joyeuse's Caribbean Creole Cuisine & Bar</title>
+    <link rel="stylesheet" href="/restaurant-system/static/design.css">
 </head>
 <body>
-    <!-- Navbar -->
-    <header>
-        <nav class="navbar">
-            <div class="logo">
-                <a href="/">🍽️ Restaurant System</a>
+    <!-- ============ HEADER / NAVBAR ============ -->
+    <header class="site-header">
+        <nav class="site-navbar">
+            <div class="site-navbar__logo">
+                <a href="/restaurant-system/templates/home.html">Joyeuse's Caribbean Creole Cuisine & Bar</a>
             </div>
-        
-            <div>
-                <ul class="nav-links">
-                    <li><a href="/home.html">Home</a></li>
-                    <li><a href="/menu.html">Menu</a></li>
-                    <li><a href="/orders.html">Orders</a></li>
-                    <li><a href="/reservations.html">Reservations</a></li>
-                    <li><a href="/contact.html">Contact</a></li>
-                    <li><a href="page_login.html">login</a></li>
-                </ul>
-            </div>
+            <ul class="site-navbar__menu">
+                <li class="site-navbar__menu-item"><a href="/restaurant-system/templates/home.html">Home</a></li>
+                <li class="site-navbar__menu-item"><a href="front.html">Front</a></li>
+                <li class="site-navbar__menu-item"><a href="kitchen.html">Kitchen</a></li>
+                <li class="site-navbar__menu-item"><a href="/reservations.html">Reservations</a></li>
+                <li class="site-navbar__menu-item"><a href="login.html">Login</a></li>
+            </ul>
         </nav>
     </header>
 
-    <!-- Main Content Area -->
-    <main>
-        <!-- Views will inject their unique content here -->
-        <h1 class="welcome-text">Welcome to Joyeuse's Caribbean Creole Cuisine & Bar!</h1>
-        <div>
-            <p>This is the base layout. Other pages will reuse this structure.</p>
-        </div>
-        
-    </main>
 
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2025 Joyeuse's Caribbean Creole Cuisine & Bar. All rights reserved.</p>
+    <!-- ============ FOOTER ============ -->
+    <footer class="site-footer">
+        <p class="site-footer__text">
+            &copy; 2025 Joyeuse's Caribbean Creole Cuisine & Bar. All rights reserved.
+        </p>
     </footer>
 </body>
 </html>

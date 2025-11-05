@@ -26,7 +26,11 @@ def validate_order_payload(data):
         try:
             customer_id = int(customer_id)
             # existence check
+<<<<<<< HEAD
             if db.session.get(Customer, customer_id) is None:
+=======
+            if Customer.query.get(customer_id) is None:
+>>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                 errors.append("customer not found")
             cleaned["customer_id"] = customer_id
         except Exception:
@@ -55,7 +59,11 @@ def validate_order_payload(data):
             else:
                 try:
                     prod = int(prod)
+<<<<<<< HEAD
                     prod_obj = db.session.get(Product, prod)
+=======
+                    prod_obj = Product.query.get(prod)
+>>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                     if prod_obj is None:
                         errors.append(f"product {prod} not found")
                 except Exception:
@@ -115,7 +123,11 @@ def validate_order_line_payload(data):
         except (ValueError, TypeError):
             errors.append("order_id must be an integer")
         else:
+<<<<<<< HEAD
             if db.session.get(Order, order_id) is None:
+=======
+            if Order.query.get(order_id) is None:
+>>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                 errors.append("order not found")
             cleaned["order_id"] = order_id
     if product_id is None:
@@ -126,7 +138,11 @@ def validate_order_line_payload(data):
         except (ValueError, TypeError):
             errors.append("product_id must be an integer")
         else:
+<<<<<<< HEAD
             if db.session.get(Product, product_id) is None:
+=======
+            if Product.query.get(product_id) is None:
+>>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                 errors.append("product not found")
             cleaned["product_id"] = product_id
 
