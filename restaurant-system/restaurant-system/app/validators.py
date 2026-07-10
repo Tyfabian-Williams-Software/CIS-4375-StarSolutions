@@ -14,14 +14,15 @@ def validate_order_payload(data):
         return False, ["payload must be a JSON object"], {}
 
     # Detect unknown top-level fields
-    allowed_keys = {"customer_id", "order_type", "lines"}
+    allowed_keys = {"customer_id", "order_type", "lines", "table_number"}
     extra = set(data.keys()) - allowed_keys
     if extra:
         errors.append(f"unknown fields at top-level: {sorted(list(extra))}")
 
+    # customer_id is OPTIONAL: walk-in orders don't need a Customer record.
     customer_id = data.get("customer_id")
     if customer_id is None:
-        errors.append("customer_id is required")
+        cleaned["customer_id"] = None
     else:
         try:
             customer_id = int(customer_id)
@@ -31,6 +32,14 @@ def validate_order_payload(data):
             cleaned["customer_id"] = customer_id
         except Exception:
             errors.append("customer_id must be an integer")
+
+    # Optional table number applied to every line (dine-in orders).
+    table_number = data.get("table_number")
+    if table_number is not None:
+        try:
+            cleaned["table_number"] = int(table_number)
+        except Exception:
+            errors.append("table_number must be an integer")
 
     order_type = data.get("order_type")
     if order_type:

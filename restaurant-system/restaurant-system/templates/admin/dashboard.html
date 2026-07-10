@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Admin · Joyeuse's{% endblock %}
+
+{% block content %}
+<div class="kds-main">
+    <h4 class="fw-bold mb-3">Admin Dashboard</h4>
+
+    <!-- ===== Stats ===== -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="card-surface p-3 text-center">
+                <div class="text-muted small">Revenue today</div>
+                <div class="fs-4 fw-bold">${{ '%.2f' % stats.revenue_today }}</div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card-surface p-3 text-center">
+                <div class="text-muted small">Revenue this week</div>
+                <div class="fs-4 fw-bold">${{ '%.2f' % stats.revenue_week }}</div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card-surface p-3 text-center">
+                <div class="text-muted small">Orders today</div>
+                <div class="fs-4 fw-bold">{{ stats.orders_today }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- ===== Recent orders ===== -->
+        <div class="col-lg-7">
+            <div class="card-surface p-3">
+                <h6 class="fw-bold mb-3">Recent Orders</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr><th>#</th><th>Placed</th><th>Type</th><th>Items</th><th class="text-end">Total</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td class="fw-bold">{{ order.id }}</td>
+                                <td class="text-muted small">{{ order.order_date.strftime('%b %d, %I:%M %p') if order.order_date else '—' }}</td>
+                                <td>{{ (order.order_type or '—')|replace('_', '-') }}</td>
+                                <td>
+                                    {% for line in order.lines %}
+                                    <span class="status-pill status-{{ line.order_status or 'pending' }}"
+                                          title="{{ line.product.name if line.product else '' }}">
+                                        {{ line.quantity }}× {{ line.product.name if line.product else 'Item' }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-end">${{ '%.2f' % (order.order_price or 0) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-muted text-center py-3">No orders yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Staff management ===== -->
+        <div class="col-lg-5">
+            <div class="card-surface p-3">
+                <h6 class="fw-bold mb-3">Staff Accounts</h6>
+                <table class="table table-sm align-middle" id="users-table">
+                    <thead><tr><th>Username</th><th>Role</th><th></th></tr></thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr data-user-id="{{ u.id }}">
+                            <td>{{ u.username }}</td>
+                            <td class="text-capitalize">{{ u.role }}</td>
+                            <td class="text-end">
+                                {% if u.id != current_user.id %}
+                                <button class="btn btn-sm btn-outline-danger user-delete">Remove</button>
+                                {% else %}
+                                <span class="text-muted small">you</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <hr />
+                <h6 class="fw-bold">Add Staff</h6>
+                <div class="d-flex flex-column gap-2">
+                    <input id="new-username" class="form-control form-control-sm" placeholder="Username" />
+                    <input id="new-password" type="password" class="form-control form-control-sm" placeholder="Password" />
+                    <select id="new-role" class="form-select form-select-sm">
+                        <option value="front">Front</option>
+                        <option value="kitchen">Kitchen</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <button class="btn-brand" id="add-user">Create account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-note" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    "use strict";
+    const toastEl = document.getElementById("toast");
+    let toastTimer;
+    function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+    }
+
+    document.getElementById("add-user").addEventListener("click", async () => {
+        const username = document.getElementById("new-username").value.trim();
+        const password = document.getElementById("new-password").value;
+        const role = document.getElementById("new-role").value;
+        if (!username || !password) { toast("Username and password required."); return; }
+        try {
+            const res = await fetch("/admin/api/users", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({ username, password, role }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || res.statusText);
+            location.reload();
+        } catch (err) { toast("Could not create user: " + err.message); }
+    });
+
+    document.getElementById("users-table").addEventListener("click", async (e) => {
+        const btn = e.target.closest(".user-delete");
+        if (!btn) return;
+        const row = btn.closest("tr");
+        const id = row.dataset.userId;
+        const name = row.cells[0].textContent;
+        if (!confirm(`Remove staff account "${name}"?`)) return;
+        try {
+            const res = await fetch(`/admin/api/users/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok && res.status !== 204) throw new Error(res.statusText);
+            row.remove();
+            toast(`Removed ${name}.`);
+        } catch (err) { toast("Could not remove user: " + err.message); }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Log in · Joyeuse's{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+    <form class="login-card card-surface" method="POST"
+          action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+        <h1>Welcome back</h1>
+        <p class="sub">Sign in to the order system</p>
+
+        <div>
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" required autofocus />
+        </div>
+
+        <div>
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+
+        <button type="submit" class="btn-brand w-100 mt-2">Log in</button>
+    </form>
+</div>
+{% endblock %}

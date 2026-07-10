@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Kitchen · Joyeuse's{% endblock %}
+
+{% block content %}
+<div class="kds-main">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h4 class="fw-bold mb-0">Kitchen Display</h4>
+        <span class="text-muted small" id="kds-count"></span>
+    </div>
+
+    <div class="kds-grid" id="kds-grid">
+        {% for order in orders %}
+        <div class="kds-card card-surface" data-order-id="{{ order.id }}">
+            <div class="kds-card__head">
+                <span class="kds-card__title">Order #{{ order.id }}</span>
+                <span class="kds-card__meta">
+                    {{ (order.order_type or '')|replace('_', '-') }}
+                    {%- set tables = order.lines | map(attribute='table_number') | select | unique | list -%}
+                    {% if tables %} · Table {{ tables | join(', ') }}{% endif %}
+                </span>
+            </div>
+            {% for line in order.lines %}
+            {% if line.order_status in ('pending', 'in_progress', 'ready') %}
+            <div class="kds-line" data-line-id="{{ line.id }}">
+                <div class="kds-line__row">
+                    <span><span class="kds-line__qty">{{ line.quantity }}×</span>
+                        {{ line.product.name if line.product else 'Item' }}</span>
+                    <span class="status-pill status-{{ line.order_status or 'pending' }}">
+                        {{ (line.order_status or 'pending')|replace('_', ' ') }}</span>
+                </div>
+                {% if line.special_instructions %}
+                <div class="kds-line__note">“{{ line.special_instructions }}”</div>
+                {% endif %}
+                <div class="kds-line__actions">
+                    <button class="kds-action kds-action--start" data-status="in_progress">Start</button>
+                    <button class="kds-action kds-action--ready" data-status="ready">Ready</button>
+                    <button class="kds-action kds-action--served" data-status="served">Served</button>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="kds-empty" id="kds-empty" {% if orders %}style="display:none"{% endif %}>
+        🎉 All caught up — no active orders.
+    </div>
+</div>
+
+<div class="toast-note" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    "use strict";
+
+    const grid = document.getElementById("kds-grid");
+    const emptyEl = document.getElementById("kds-empty");
+    const countEl = document.getElementById("kds-count");
+    const toastEl = document.getElementById("toast");
+
+    /* ---------- Status updates ---------- */
+    grid.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".kds-action");
+        if (!btn) return;
+        const lineEl = btn.closest(".kds-line");
+        const lineId = lineEl.dataset.lineId;
+        const status = btn.dataset.status;
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/api/order_lines/${lineId}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({ order_status: status }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || res.statusText);
+            }
+            applyStatus(lineEl, status);
+        } catch (err) {
+            toast("Update failed: " + err.message);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    function applyStatus(lineEl, status) {
+        const pill = lineEl.querySelector(".status-pill");
+        pill.className = `status-pill status-${status}`;
+        pill.textContent = status.replace("_", " ");
+        if (status === "served" || status === "cancelled") {
+            // Remove the line; remove the whole card if nothing active remains.
+            const card = lineEl.closest(".kds-card");
+            lineEl.remove();
+            if (!card.querySelector(".kds-line")) card.remove();
+            refreshEmptyState();
+        }
+    }
+
+    /* ---------- Live socket events ---------- */
+    const socket = io();
+
+    socket.on("order_new", (order) => {
+        grid.prepend(buildCard(order));
+        refreshEmptyState();
+        toast(`New order #${order.order_id}`);
+    });
+
+    socket.on("order_update", (msg) => {
+        const lineEl = grid.querySelector(`.kds-line[data-line-id="${msg.order_line_id}"]`);
+        if (lineEl) applyStatus(lineEl, msg.order_status);
+    });
+
+    socket.on("order_replaced", (order) => {
+        const existing = grid.querySelector(`.kds-card[data-order-id="${order.order_id}"]`);
+        if (existing) existing.remove();
+        grid.prepend(buildCard(order));
+        refreshEmptyState();
+        toast(`Order #${order.order_id} updated`);
+    });
+
+    socket.on("order_delete", (msg) => {
+        const card = grid.querySelector(`.kds-card[data-order-id="${msg.id}"]`);
+        if (card) card.remove();
+        refreshEmptyState();
+    });
+
+    /* ---------- Card builder ---------- */
+    const ACTIVE = new Set(["pending", "in_progress", "ready"]);
+
+    function buildCard(order) {
+        const card = document.createElement("div");
+        card.className = "kds-card card-surface flash-new";
+        card.dataset.orderId = order.order_id;
+
+        const tables = [...new Set((order.lines || []).map(l => l.table_number).filter(Boolean))];
+        const meta = [(order.order_type || "").replace("_", "-"), tables.length ? "Table " + tables.join(", ") : ""]
+            .filter(Boolean).join(" · ");
+
+        card.innerHTML = `
+            <div class="kds-card__head">
+                <span class="kds-card__title">Order #${order.order_id}</span>
+                <span class="kds-card__meta">${esc(meta)}</span>
+            </div>`;
+
+        for (const line of (order.lines || [])) {
+            if (!ACTIVE.has(line.order_status || "pending")) continue;
+            const el = document.createElement("div");
+            el.className = "kds-line";
+            el.dataset.lineId = line.order_line_id;
+            el.innerHTML = `
+                <div class="kds-line__row">
+                    <span><span class="kds-line__qty">${line.quantity}×</span> ${esc(line.product_name || "Item")}</span>
+                    <span class="status-pill status-${line.order_status || "pending"}">${(line.order_status || "pending").replace("_", " ")}</span>
+                </div>
+                ${line.special_instructions ? `<div class="kds-line__note">“${esc(line.special_instructions)}”</div>` : ""}
+                <div class="kds-line__actions">
+                    <button class="kds-action kds-action--start" data-status="in_progress">Start</button>
+                    <button class="kds-action kds-action--ready" data-status="ready">Ready</button>
+                    <button class="kds-action kds-action--served" data-status="served">Served</button>
+                </div>`;
+            card.appendChild(el);
+        }
+        return card;
+    }
+
+    /* ---------- Helpers ---------- */
+    function refreshEmptyState() {
+        const count = grid.querySelectorAll(".kds-card").length;
+        emptyEl.style.display = count ? "none" : "";
+        countEl.textContent = count ? `${count} active order${count === 1 ? "" : "s"}` : "";
+    }
+
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, c =>
+            ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    let toastTimer;
+    function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+    }
+
+    refreshEmptyState();
+})();
+</script>
+{% endblock %}

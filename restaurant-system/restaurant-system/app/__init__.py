@@ -13,6 +13,11 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # Refuse to boot with placeholder secrets / missing DB in production.
+    import os
+    if os.getenv("FLASK_ENV", "development") == "production":
+        Config.validate_production()
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)

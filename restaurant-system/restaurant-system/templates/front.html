@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Front of House · Joyeuse's{% endblock %}
+
+{% block content %}
+<div class="pos-layout">
+    <!-- ================= MENU ================= -->
+    <section>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h4 class="mb-0 fw-bold">Menu</h4>
+            <input id="menu-search" type="text" class="form-control" style="max-width: 320px;"
+                   placeholder="Search food, drink…" />
+        </div>
+
+        <div class="category-tabs" id="category-tabs">
+            <button class="category-tab active" data-category="__all__">All</button>
+            {% for cat in categories %}
+            <button class="category-tab" data-category="{{ cat }}">{{ cat }}</button>
+            {% endfor %}
+        </div>
+
+        <div class="product-grid" id="product-grid"></div>
+    </section>
+
+    <!-- ================= CART ================= -->
+    <aside class="pos-cart card-surface">
+        <h5 class="fw-bold mb-0">Current Order</h5>
+
+        <div class="d-flex gap-2">
+            <select id="cart-table" class="form-select form-select-sm">
+                <option value="">No table</option>
+                {% for t in range(1, 13) %}
+                <option value="{{ t }}">Table {{ t }}</option>
+                {% endfor %}
+            </select>
+            <select id="cart-type" class="form-select form-select-sm">
+                <option value="dine_in">Dine-in</option>
+                <option value="takeout">Takeout</option>
+                <option value="delivery">Delivery</option>
+            </select>
+        </div>
+
+        <div class="pos-cart__items" id="cart-items">
+            <p class="text-muted small mb-0" id="cart-empty">Tap menu items to add them.</p>
+        </div>
+
+        <textarea id="cart-notes" class="form-control form-control-sm" rows="2"
+                  placeholder="Order notes (allergies, no onions…)"></textarea>
+
+        <div class="pos-cart__total">
+            <span>Total</span>
+            <span id="cart-total">$0.00</span>
+        </div>
+
+        <button class="btn-brand w-100" id="submit-order">Send to Kitchen</button>
+    </aside>
+</div>
+
+<!-- ================= RECENT ORDERS ================= -->
+<section class="recent-orders">
+    <h6 class="fw-bold mb-2">Recent Orders <span class="text-muted fw-normal">(live)</span></h6>
+    <div class="recent-orders__list" id="recent-orders">
+        {% for order in recent_orders %}
+        <div class="recent-order-chip card-surface" data-order-id="{{ order.id }}">
+            <div class="d-flex justify-content-between">
+                <strong>#{{ order.id }}</strong>
+                <span>${{ '%.2f' % (order.order_price or 0) }}</span>
+            </div>
+            <div class="mt-1 d-flex flex-wrap gap-1">
+                {% for line in order.lines %}
+                <span class="status-pill status-{{ line.order_status or 'pending' }}"
+                      data-line-id="{{ line.id }}">{{ (line.order_status or 'pending').replace('_', ' ') }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<div class="toast-note" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    "use strict";
+
+    const PRODUCTS = {{ products | tojson }};
+    const grid = document.getElementById("product-grid");
+    const tabs = document.getElementById("category-tabs");
+    const search = document.getElementById("menu-search");
+    const cartItemsEl = document.getElementById("cart-items");
+    const cartEmptyEl = document.getElementById("cart-empty");
+    const cartTotalEl = document.getElementById("cart-total");
+    const toastEl = document.getElementById("toast");
+
+    let activeCategory = "__all__";
+    let cart = new Map(); // product_id -> {product, qty}
+
+    /* ---------- Menu rendering ---------- */
+    function renderMenu() {
+        const q = search.value.trim().toLowerCase();
+        grid.innerHTML = "";
+        const matches = PRODUCTS.filter(p => {
+            const inCat = activeCategory === "__all__" || (p.product_type || "Other") === activeCategory;
+            const inSearch = !q || p.product_name.toLowerCase().includes(q);
+            return inCat && inSearch;
+        });
+        if (!matches.length) {
+            grid.innerHTML = '<p class="text-muted">No items match.</p>';
+            return;
+        }
+        for (const p of matches) {
+            const card = document.createElement("div");
+            card.className = "product-card";
+            card.innerHTML = `
+                <div class="product-card__name">${esc(p.product_name)}</div>
+                <div class="product-card__desc">${esc(p.product_description || "")}</div>
+                <div class="product-card__price">$${(p.product_price ?? 0).toFixed(2)}</div>`;
+            card.addEventListener("click", () => addToCart(p));
+            grid.appendChild(card);
+        }
+    }
+
+    tabs.addEventListener("click", (e) => {
+        const btn = e.target.closest(".category-tab");
+        if (!btn) return;
+        tabs.querySelectorAll(".category-tab").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeCategory = btn.dataset.category;
+        renderMenu();
+    });
+
+    search.addEventListener("input", renderMenu);
+
+    /* ---------- Cart ---------- */
+    function addToCart(product) {
+        const entry = cart.get(product.product_id) || { product, qty: 0 };
+        entry.qty += 1;
+        cart.set(product.product_id, entry);
+        renderCart();
+    }
+
+    function changeQty(id, delta) {
+        const entry = cart.get(id);
+        if (!entry) return;
+        entry.qty += delta;
+        if (entry.qty <= 0) cart.delete(id);
+        renderCart();
+    }
+
+    function renderCart() {
+        cartItemsEl.innerHTML = "";
+        if (!cart.size) {
+            cartItemsEl.appendChild(cartEmptyEl);
+            cartTotalEl.textContent = "$0.00";
+            return;
+        }
+        let total = 0;
+        for (const [id, { product, qty }] of cart) {
+            total += (product.product_price ?? 0) * qty;
+            const row = document.createElement("div");
+            row.className = "cart-item";
+            row.innerHTML = `
+                <div class="cart-item__info">
+                    <div class="cart-item__name">${esc(product.product_name)}</div>
+                    <div class="cart-item__price">$${(product.product_price ?? 0).toFixed(2)} each</div>
+                </div>
+                <div class="qty-controls">
+                    <button class="qty-btn" data-action="dec">−</button>
+                    <span>${qty}</span>
+                    <button class="qty-btn" data-action="inc">+</button>
+                </div>
+                <button class="cart-item__remove" data-action="rm" title="Remove">✕</button>`;
+            row.querySelector('[data-action="dec"]').onclick = () => changeQty(id, -1);
+            row.querySelector('[data-action="inc"]').onclick = () => changeQty(id, +1);
+            row.querySelector('[data-action="rm"]').onclick = () => { cart.delete(id); renderCart(); };
+            cartItemsEl.appendChild(row);
+        }
+        cartTotalEl.textContent = "$" + total.toFixed(2);
+    }
+
+    /* ---------- Submit ---------- */
+    document.getElementById("submit-order").addEventListener("click", async () => {
+        if (!cart.size) { toast("Add at least one item first."); return; }
+        const btn = document.getElementById("submit-order");
+        btn.disabled = true;
+        const notes = document.getElementById("cart-notes").value.trim();
+        const payload = {
+            order_type: document.getElementById("cart-type").value,
+            lines: [...cart.values()].map(({ product, qty }, i) => ({
+                product_id: product.product_id,
+                quantity: qty,
+                special_instructions: i === 0 && notes ? notes : undefined,
+            })),
+        };
+        const tableVal = document.getElementById("cart-table").value;
+        if (tableVal) payload.table_number = parseInt(tableVal, 10);
+
+        try {
+            const res = await fetch("/api/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error((data.details || [data.error]).join("; "));
+            cart.clear();
+            document.getElementById("cart-notes").value = "";
+            renderCart();
+            prependRecent(data);
+            toast(`Order #${data.order_id} sent to kitchen ✓`);
+        } catch (err) {
+            toast("Could not send order: " + err.message);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    /* ---------- Recent orders + live updates ---------- */
+    function prependRecent(order) {
+        const list = document.getElementById("recent-orders");
+        const chip = document.createElement("div");
+        chip.className = "recent-order-chip card-surface";
+        chip.dataset.orderId = order.order_id;
+        chip.innerHTML = `
+            <div class="d-flex justify-content-between">
+                <strong>#${order.order_id}</strong>
+                <span>$${(order.order_price ?? 0).toFixed(2)}</span>
+            </div>
+            <div class="mt-1 d-flex flex-wrap gap-1">
+                ${(order.lines || []).map(l =>
+                    `<span class="status-pill status-${l.order_status || "pending"}" data-line-id="${l.order_line_id}">${(l.order_status || "pending").replace("_", " ")}</span>`
+                ).join("")}
+            </div>`;
+        list.prepend(chip);
+        while (list.children.length > 12) list.lastElementChild.remove();
+    }
+
+    const socket = io();
+    socket.on("order_update", (msg) => {
+        const pill = document.querySelector(`.status-pill[data-line-id="${msg.order_line_id}"]`);
+        if (pill) {
+            pill.className = `status-pill status-${msg.order_status}`;
+            pill.textContent = msg.order_status.replace("_", " ");
+        }
+    });
+
+    /* ---------- Helpers ---------- */
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, c =>
+            ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    let toastTimer;
+    function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+    }
+
+    renderMenu();
+})();
+</script>
+{% endblock %}

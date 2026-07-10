@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Joyeuse's Caribbean Creole Cuisine &amp; Bar{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}" />
+    {% block head_extra %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+    <header class="site-header">
+        <nav class="site-navbar">
+            <a class="site-navbar__brand" href="{{ url_for('views.home') }}">
+                Joyeuse's <span>Caribbean Creole Cuisine &amp; Bar</span>
+            </a>
+            <ul class="site-navbar__menu">
+                {% if current_user.is_authenticated %}
+                    {% if current_user.role in ('front', 'admin') %}
+                    <li><a href="{{ url_for('routes.front') }}"
+                           class="{{ 'active' if request.endpoint == 'routes.front' }}">Front</a></li>
+                    {% endif %}
+                    {% if current_user.role in ('kitchen', 'admin') %}
+                    <li><a href="{{ url_for('routes.kitchen') }}"
+                           class="{{ 'active' if request.endpoint == 'routes.kitchen' }}">Kitchen</a></li>
+                    {% endif %}
+                    {% if current_user.role == 'admin' %}
+                    <li><a href="{{ url_for('admin.dashboard') }}"
+                           class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">Admin</a></li>
+                    {% endif %}
+                    <li class="site-navbar__user">
+                        <span>{{ current_user.first_name or current_user.username }}</span>
+                        <a class="btn-logout" href="{{ url_for('auth.logout') }}">Log out</a>
+                    </li>
+                {% else %}
+                    <li><a href="{{ url_for('auth.login') }}">Log in</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main class="page-main">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-stack">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} mb-2">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <small>&copy; 2026 Joyeuse's Caribbean Creole Cuisine &amp; Bar</small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

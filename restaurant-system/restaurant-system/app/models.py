@@ -70,6 +70,8 @@ class Product(db.Model):
             "product_id": self.id,
             "product_name": self.name,
             "product_price": float(self.price) if self.price is not None else None,
+            "product_description": self.description,
+            "product_type": self.product_type,
         }
 
 
@@ -82,8 +84,9 @@ class Order(db.Model):
     order_type = db.Column("Order_Type", db.String(50))
     creation_date = db.Column("Creation_Date", db.DateTime)
 
-    # Relationship to order lines
-    lines = db.relationship("OrderLine", backref="order", cascade="all, delete-orphan", lazy="dynamic")
+    # selectin loading fetches all lines for a batch of orders in one extra
+    # query (fixes the N+1 pattern the old lazy="dynamic" caused in views).
+    lines = db.relationship("OrderLine", backref="order", cascade="all, delete-orphan", lazy="selectin")
 
     def to_dict(self, include_lines=True):
         d = {
@@ -95,7 +98,7 @@ class Order(db.Model):
             "creation_date": None if not self.creation_date else self.creation_date.isoformat(),
         }
         if include_lines:
-            d["lines"] = [l.to_dict() for l in self.lines.order_by(db.desc(OrderLine.id)).all()]
+            d["lines"] = [l.to_dict() for l in sorted(self.lines, key=lambda l: l.id or 0)]
         return d
 
 
@@ -110,11 +113,15 @@ class OrderLine(db.Model):
     order_status = db.Column("Order_Status", db.String(50))
     table_number = db.Column("Table_Number", db.Integer)
 
+    # Eager-join the product so kitchen/front views can show names without N+1 queries.
+    product = db.relationship("Product", lazy="joined")
+
     def to_dict(self):
         return {
             "order_line_id": self.id,
             "order_id": self.order_id,
             "product_id": self.product_id,
+            "product_name": self.product.name if self.product else None,
             "quantity": self.quantity,
             "unit_price": float(self.unit_price) if self.unit_price is not None else None,
             "special_instructions": self.special_instructions,
