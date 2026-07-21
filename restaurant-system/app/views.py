@@ -1,6 +1,5 @@
-from flask import Blueprint, render_template
-from flask_login import login_required
-from datetime import datetime
+from flask import Blueprint, redirect, url_for
+from flask_login import login_required, current_user
 
 views_bp = Blueprint("views", __name__)
 
@@ -8,5 +7,9 @@ views_bp = Blueprint("views", __name__)
 @views_bp.route("/")
 @login_required
 def home():
-    # Render the front-facing order dashboard by default
-    return render_template("front.html", current_year=datetime.utcnow().year)
+    """Send each role to its workspace."""
+    if current_user.role == "admin":
+        return redirect(url_for("admin.dashboard"))
+    if current_user.role == "kitchen":
+        return redirect(url_for("routes.kitchen"))
+    return redirect(url_for("routes.front"))

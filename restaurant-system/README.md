@@ -1,116 +1,101 @@
-# CIS-4375-StarSolutions
-This is the current state of our project's repo
+# Joyeuse's Restaurant Order System
 
-## Setup & Running
+Real-time restaurant order management: Front-of-House ordering (POS) + live Kitchen
+Display System (KDS), built with Flask, SQLAlchemy, and Socket.IO.
 
-- Copy `.env.example` to `.env` and fill in `SECRET_KEY` and `DATABASE_URL` with your local credentials. Do not commit `.env`.
-- Create a virtual environment and install dependencies: `pip install -r requirements.txt`.
-- To run locally with sockets: `python run.py` (this uses Flask-SocketIO). If using `eventlet`, install it and the server will pick it up.
+## Features
+- **Front of House** (`/front`): menu browsing by category with search, tap-to-add cart,
+  table & order-type selection, order notes, one-tap "Send to Kitchen", and a live
+  recent-orders strip that updates as the kitchen works.
+- **Kitchen Display** (`/kitchen`): active orders appear instantly (no refresh),
+  per-item Start / Ready / Served buttons, special-instruction callouts, cards clear
+  automatically when everything is served.
+- **Admin** (`/admin/dashboard`): staff account management (create/update/delete users).
+- **Role-based access**: `front`, `kitchen`, `admin` roles with per-route enforcement.
+- **REST API** + Socket.IO events (`order_new`, `order_update`, `order_replaced`,
+  `order_delete`) for real-time sync between screens.
 
-Security: remove any hard-coded credentials from source. The repository now contains `.env.example` and `.gitignore` to help with this.
-
-## Production deployment (recommended)
-
-This project uses Flask + Flask-SocketIO. For production we recommend:
-
-- Use Python 3.11 (eventlet and some socket drivers are not yet stable on newer Python versions).
-- Create a virtual environment and install pinned dependencies from `requirements.txt`.
-
-Example steps (on a Linux host):
-
+## Quick start (local development)
 ```bash
-# create user and working directory, then clone repo to /opt/restaurant-system
-cd /opt/restaurant-system
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+cd restaurant-system
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env                                   # defaults to SQLite dev.db
+python scripts/seed_demo.py                            # creates staff logins + demo menu
+python run.py                                          # http://localhost:8000
+```
+Log in with `front1` / `ChangeMe-Front1!` (front) or `kitchen1` / `ChangeMe-Kitchen1!`
+(kitchen) — change these in `scripts/seed_demo.py` before real use.
+
+## Deploying for a real restaurant (Render, ~$7–14/month)
+
+Render is the cheapest low-maintenance host that keeps Socket.IO connections alive
+24/7 (kitchen screens must never sleep, which rules out free tiers).
+
+### One-time setup
+1. Push this repo to GitHub (**make sure `.env` is NOT committed** — see Security).
+2. Create a free account at https://render.com and connect your GitHub.
+3. **New → Web Service** → pick this repo. Render auto-detects the `Dockerfile`.
+4. Choose the **Starter** instance ($7/mo — always on).
+5. Set environment variables under the service's **Environment** tab:
+   - `SECRET_KEY` → generate with `python -c "import secrets; print(secrets.token_hex(32))"`
+   - `DATABASE_URL` → see database options below
+   - `FLASK_ENV` → `production`
+   - `GUNICORN_WORKERS` → `1` (required for SQLite; `2` is fine for MySQL/Postgres)
+6. Deploy. Render gives you a free HTTPS URL like `https://joyeuses-orders.onrender.com`.
+7. Open a Render **Shell** for the service and run `python scripts/seed_demo.py`
+   (after editing it with the real menu + strong passwords).
+
+### Database options (pick one)
+| Option | Cost | Notes |
+|---|---|---|
+| **A. Render persistent disk + SQLite** | +$1/mo | Cheapest. Add a 1 GB disk mounted at `/data`, set `DATABASE_URL=sqlite:////data/restaurant.db`, keep `GUNICORN_WORKERS=1`. Perfect for one restaurant. |
+| **B. Render managed Postgres** | +$6/mo | Set `DATABASE_URL` to the Internal Database URL Render provides, and add `psycopg2-binary` to requirements.txt. Automatic backups. |
+| **C. Existing AWS RDS MySQL** | ~$15+/mo | Keep current data; just set `DATABASE_URL=mysql+pymysql://...`. Most expensive — fine if the RDS instance already exists for other reasons. |
+
+### In the restaurant
+- **Order-taking device** (tablet/phone/register PC): bookmark `https://<your-app>/front`,
+  log in as a `front` user.
+- **Kitchen screen** (any tablet or cheap Android TV stick + monitor): open
+  `https://<your-app>/kitchen`, log in as a `kitchen` user, set the device to
+  never sleep and enable browser full-screen/kiosk mode.
+- Optional: buy a domain (~$10/yr) and add it under Render → Custom Domains.
+
+## Security notes
+- **Never commit `.env`.** It is gitignored; keep it that way. If real credentials were
+  ever committed, rotate them (change the DB password) — removing the file later does
+  not remove it from git history.
+- `SECRET_KEY` must be a long random value in production (the app refuses obvious
+  placeholder values when `Config.validate_production()` is called).
+- All staff passwords are stored hashed (Werkzeug). Use strong, unique passwords.
+
+## Project layout
+```
+restaurant-system/
+├── app/
+│   ├── __init__.py      # app factory, blueprint registration
+│   ├── config.py        # env-driven config (SQLite fallback for dev)
+│   ├── models.py        # Employee, Customer, Product, Orders, Order_Line
+│   ├── routes.py        # pages (/front, /kitchen) + JSON API (/api/…)
+│   ├── auth.py          # login/logout
+│   ├── admin.py         # admin dashboard + user management API
+│   ├── sockets.py       # Socket.IO setup (eventlet/gevent/threading fallback)
+│   ├── validators.py    # request payload validation
+│   └── utils.py         # roles_required decorator
+├── templates/           # base, front (POS), kitchen (KDS), login, admin
+├── static/design.css    # brand design system
+├── scripts/seed_demo.py # first-run staff + menu seeding
+├── Dockerfile           # production image (gunicorn + eventlet, Python 3.11)
+└── deploy/              # gunicorn config, systemd unit (for VPS installs)
 ```
 
-Run with Gunicorn + eventlet (recommended if using Python 3.11):
-
-```bash
-# from project root
-.venv/bin/gunicorn -c deploy/gunicorn_conf.py run:app
-```
-
-If you prefer gevent (useful when eventlet is incompatible with your Python version):
-
-1. Install `gevent` (already included as an optional dependency in `requirements.txt`).
-2. Edit `deploy/gunicorn_conf.py` and set `worker_class = 'gevent'`.
-3. Start Gunicorn as above.
-
-Systemd example: a unit file is provided at `deploy/restaurant.service`. Copy it to
-`/etc/systemd/system/restaurant.service` and adjust `User`, `WorkingDirectory`, and `Environment.PATH`.
-
-Notes and troubleshooting
-- If the server falls back to the `threading` async driver it will still run but may not scale for many
-	concurrent websocket connections. Check your logs for the `SocketIO async_mode selected: ...` message
-	at startup to confirm which driver was chosen.
-- If you need support for Python 3.13+, prefer `gevent` or run in an ASGI-based stack; eventlet
-	historically lags newest CPython releases.
-
-## Docker deployment (managed DB)
-
-This section covers running the app in Docker while using a managed database (no local DB in compose).
-
-Prerequisites
-
-- Have a managed database endpoint available and the connection URL in SQLAlchemy format (for example:
-	`mysql+pymysql://user:password@host:3306/dbname`).
-- Copy `.env.example` to `.env` and fill in `SECRET_KEY` and `DATABASE_URL` (do NOT commit `.env`).
-
-Step-by-step (deploy with docker-compose)
-
-1. Build the Docker image:
-
-```bash
-docker build -t restaurant-system:latest .
-```
-
-2. Start the container with your `.env` file (ensure `.env` contains `DATABASE_URL` for the managed DB):
-
-```bash
-docker-compose --env-file .env up -d --build
-```
-
-3. Verify the app is reachable on the exposed port (default 8000):
-
-```bash
-curl -I http://localhost:8000
-```
-
-Notes on secrets
-
-- Keep `.env` out of version control. Use Docker secrets or your orchestration platform's secret store in
-	production (Docker Swarm, Kubernetes, ECS secrets, etc.).
-
-Gevent vs Eventlet — will they interfere?
-
-- They are separate async libraries. Choosing `gevent` in the container (via `WORKER_CLASS=gevent`) does not
-	"interfere" with `eventlet` as long as the image/command uses the desired worker library. Problems arise when
-	the runtime tries to import an incompatible driver (for example, eventlet on Python 3.13) — that's why the
-	image and environment must be consistent.
-- The Dockerfile now respects the `WORKER_CLASS` env var at container start, so you can build a single image and
-	select `eventlet` (recommended on Python 3.11) or `gevent` (recommended if you need Python 3.13) at runtime.
-
-Examples
-
-- To run with gevent workers (for Python 3.13 hosts or when eventlet is incompatible):
-
-```bash
-export WORKER_CLASS=gevent
-export GUNICORN_WORKERS=3
-docker-compose --env-file .env up -d --build
-```
-
-- To run with eventlet workers (recommended on Python 3.11):
-
-```bash
-export WORKER_CLASS=eventlet
-export GUNICORN_WORKERS=2
-docker-compose --env-file .env up -d --build
-```
-<<<<<<< HEAD
-=======
-
-If you want, I can add a small `wait-for-db.sh` script to the image so the app waits for the managed DB to be reachable before starting. This is optional for managed DBs that are always available. 
->>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
+## API summary
+| Method | Path | Role | Purpose |
+|---|---|---|---|
+| GET | `/api/products` | any | menu items |
+| GET | `/api/orders?active=1` | any | orders (active filter optional) |
+| POST | `/api/orders` | front/admin | create order (lines, table, type) |
+| PUT | `/api/orders/<id>/lines` | front/admin | atomically replace an order's lines |
+| PATCH | `/api/order_lines/<id>/status` | kitchen/front/admin | update line status |
+| DELETE | `/api/orders/<id>` | admin | delete order |
+| GET/POST/PUT/DELETE | `/admin/api/users…` | admin | staff management |

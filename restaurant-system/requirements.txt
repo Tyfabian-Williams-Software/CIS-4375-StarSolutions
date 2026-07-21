@@ -8,7 +8,6 @@ Flask-SocketIO==5.3.6
 # eventlet incompatibilities. Adjust this pin as needed for your deployment.
 eventlet==0.33.3
 # Optional: gevent is an alternative async driver for Socket.IO
-gevent==21.12.0
 # Gunicorn for process management in production
 gunicorn==20.1.0
 python-dotenv==1.0.1

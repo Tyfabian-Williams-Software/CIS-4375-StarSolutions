@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from app.models import Order
@@ -13,8 +15,27 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @login_required
 @roles_required("admin")
 def dashboard():
-    orders = Order.query.all()
-    return render_template("admin/dashboard.html", orders=orders)
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=now.weekday())
+
+    def _revenue(since):
+        total = (
+            db.session.query(db.func.coalesce(db.func.sum(Order.order_price), 0))
+            .filter(Order.order_date >= since)
+            .scalar()
+        )
+        return float(total or 0)
+
+    stats = {
+        "revenue_today": _revenue(today_start),
+        "revenue_week": _revenue(week_start),
+        "orders_today": Order.query.filter(Order.order_date >= today_start).count(),
+    }
+    recent_orders = Order.query.order_by(Order.order_date.desc()).limit(15).all()
+    users = User.query.order_by(User.username).all()
+    return render_template("admin/dashboard.html",
+                           stats=stats, recent_orders=recent_orders, users=users)
 
 
 # Admin JSON API for user management

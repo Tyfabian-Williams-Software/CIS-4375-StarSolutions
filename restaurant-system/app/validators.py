@@ -14,27 +14,32 @@ def validate_order_payload(data):
         return False, ["payload must be a JSON object"], {}
 
     # Detect unknown top-level fields
-    allowed_keys = {"customer_id", "order_type", "lines"}
+    allowed_keys = {"customer_id", "order_type", "lines", "table_number"}
     extra = set(data.keys()) - allowed_keys
     if extra:
         errors.append(f"unknown fields at top-level: {sorted(list(extra))}")
 
+    # customer_id is OPTIONAL: walk-in orders don't need a Customer record.
     customer_id = data.get("customer_id")
     if customer_id is None:
-        errors.append("customer_id is required")
+        cleaned["customer_id"] = None
     else:
         try:
             customer_id = int(customer_id)
             # existence check
-<<<<<<< HEAD
-            if db.session.get(Customer, customer_id) is None:
-=======
             if Customer.query.get(customer_id) is None:
->>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                 errors.append("customer not found")
             cleaned["customer_id"] = customer_id
         except Exception:
             errors.append("customer_id must be an integer")
+
+    # Optional table number applied to every line (dine-in orders).
+    table_number = data.get("table_number")
+    if table_number is not None:
+        try:
+            cleaned["table_number"] = int(table_number)
+        except Exception:
+            errors.append("table_number must be an integer")
 
     order_type = data.get("order_type")
     if order_type:
@@ -59,11 +64,7 @@ def validate_order_payload(data):
             else:
                 try:
                     prod = int(prod)
-<<<<<<< HEAD
-                    prod_obj = db.session.get(Product, prod)
-=======
                     prod_obj = Product.query.get(prod)
->>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                     if prod_obj is None:
                         errors.append(f"product {prod} not found")
                 except Exception:
@@ -123,11 +124,7 @@ def validate_order_line_payload(data):
         except (ValueError, TypeError):
             errors.append("order_id must be an integer")
         else:
-<<<<<<< HEAD
-            if db.session.get(Order, order_id) is None:
-=======
             if Order.query.get(order_id) is None:
->>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                 errors.append("order not found")
             cleaned["order_id"] = order_id
     if product_id is None:
@@ -138,11 +135,7 @@ def validate_order_line_payload(data):
         except (ValueError, TypeError):
             errors.append("product_id must be an integer")
         else:
-<<<<<<< HEAD
-            if db.session.get(Product, product_id) is None:
-=======
             if Product.query.get(product_id) is None:
->>>>>>> 0aa3849541286f0870d056296235a30d872fb0aa
                 errors.append("product not found")
             cleaned["product_id"] = product_id
 

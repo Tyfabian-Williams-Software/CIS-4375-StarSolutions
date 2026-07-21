@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -9,9 +11,23 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 
+# templates/ and static/ live at the PROJECT ROOT, one level above this app/
+# package. Flask(__name__) would resolve them relative to app/, so we must
+# point at them explicitly — otherwise every render raises TemplateNotFound.
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+
 def create_app():
-    app = Flask(__name__)
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(_PROJECT_ROOT, "templates"),
+        static_folder=os.path.join(_PROJECT_ROOT, "static"),
+    )
     app.config.from_object(Config)
+
+    # Refuse to boot with placeholder secrets / missing DB in production.
+    if os.getenv("FLASK_ENV", "development") == "production":
+        Config.validate_production()
 
     db.init_app(app)
     migrate.init_app(app, db)

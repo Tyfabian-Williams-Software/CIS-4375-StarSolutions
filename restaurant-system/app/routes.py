@@ -1,101 +1,98 @@
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify
+from decimal import Decimal
+
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
+from sqlalchemy.orm import selectinload
+
 from app import db
-from app.models import Order, OrderLine, Product, Customer
+from app.models import Order, OrderLine, Product
 from app.sockets import socketio
 from app.utils import roles_required
-from app.validators import validate_order_payload, validate_order_line_payload
+from app.validators import validate_order_payload, validate_order_line_payload, ALLOWED_ORDER_STATUSES
 
 routes_bp = Blueprint("routes", __name__)
 
-@routes_bp.route("/front", methods=["GET", "POST"])
+ACTIVE_STATUSES = ("pending", "in_progress", "ready")
+
+
+def _recalc_order_price(order):
+    """Recompute the order header total from its lines."""
+    total = Decimal("0")
+    for line in list(order.lines):
+        if line.unit_price is not None and line.quantity:
+            total += Decimal(str(line.unit_price)) * line.quantity
+    order.order_price = total
+    return total
+
+
+def _active_orders():
+    """Orders that still have at least one line the kitchen needs to see, oldest first."""
+    return (
+        Order.query
+        .join(OrderLine)
+        .filter(OrderLine.order_status.in_(ACTIVE_STATUSES))
+        .options(selectinload(Order.lines))
+        .order_by(Order.order_date.asc())
+        .distinct()
+        .all()
+    )
+
+
+# ---------------------------------------------------------------------------
+# Page routes (order entry + kitchen display). All mutations go through the
+# JSON API below; these routes only render the shells.
+# ---------------------------------------------------------------------------
+
+@routes_bp.route("/front")
 @login_required
 @roles_required("front", "admin")
 def front():
+    products = Product.query.order_by(Product.product_type, Product.name).all()
+    categories = []
+    for p in products:
+        cat = p.product_type or "Other"
+        if cat not in categories:
+            categories.append(cat)
+    recent_orders = (
+        Order.query.options(selectinload(Order.lines))
+        .order_by(Order.order_date.desc())
+        .limit(8)
+        .all()
+    )
+    return render_template(
+        "front.html",
+        products=[p.to_dict() for p in products],
+        categories=categories,
+        recent_orders=recent_orders,
+    )
 
-    if request.method == "POST":
-        # Expect the front form to submit customer_id and a JSON string for items or simple text
-        customer_id = request.form.get("customer_id") or request.form.get("customer_name")
-        items_raw = request.form.get("items")
 
-        # Create order header
-        order = Order(customer_id=customer_id, order_type="dine_in", creation_date=None)
-        db.session.add(order)
-        db.session.commit()
-
-        # Parse items: expect lines like product_id:quantity or a JSON array in the items form field
-        # For simplicity, if items_raw looks like JSON list, try parse; otherwise store as a single line
-        import json
-        try:
-            items_list = json.loads(items_raw)
-        except Exception:
-            items_list = None
-
-        if items_list and isinstance(items_list, list):
-            for it in items_list:
-                prod_id = it.get("product_id")
-                qty = it.get("quantity", 1)
-                price = it.get("unit_price")
-                # If unit_price not provided, attempt to pull current product price from Product table
-                if price is None and prod_id:
-                    prod = Product.query.get(prod_id)
-                    price = prod.price if prod is not None else None
-                ol = OrderLine(order_id=order.id, product_id=prod_id, quantity=qty, unit_price=price, order_status="pending")
-                db.session.add(ol)
-        else:
-            # treat items_raw as a single note
-            ol = OrderLine(order_id=order.id, product_id=None, quantity=1, unit_price=None, special_instructions=items_raw, order_status="pending")
-            db.session.add(ol)
-
-        db.session.commit()
-
-        # Notify clients
-        socketio.emit("order_new", order.to_dict())
-
-        return redirect(url_for("routes.front"))
-
-    orders = Order.query.order_by(Order.order_date.desc()).all()
-    return render_template("front.html", orders=orders)
-
-@routes_bp.route("/kitchen", methods=["GET", "POST"])
+@routes_bp.route("/kitchen")
 @login_required
 @roles_required("kitchen", "admin")
 def kitchen():
-
-    if request.method == "POST":
-        order_id = request.form["order_id"]
-        status = request.form["status"]
-        order = Order.query.get(order_id)
-        if order is None:
-            return "Order not found", 404
-        # Kitchen updates should change order line statuses — if order line id passed, update that
-        line_id = request.form.get("line_id")
-        if line_id:
-            line = OrderLine.query.get(line_id)
-            if not line:
-                return "Order line not found", 404
-            line.order_status = status
-            db.session.commit()
-            socketio.emit("order_update", {"order_line_id": line.id, "order_id": line.order_id, "order_status": status})
-            return redirect(url_for("routes.kitchen"))
-        else:
-            # If only order header provided, update all lines for that order
-            for line in order.lines.all():
-                line.order_status = status
-            db.session.commit()
-            socketio.emit("order_update", {"order_id": order.id, "status": status})
-            return redirect(url_for("routes.kitchen"))
-
-    orders = Order.query.all()
-    return render_template("kitchen.html", orders=orders)
+    return render_template("kitchen.html", orders=_active_orders())
 
 
-# JSON REST API for orders
+# ---------------------------------------------------------------------------
+# JSON REST API
+# ---------------------------------------------------------------------------
+
+@routes_bp.route("/api/products", methods=["GET"])
+@login_required
+def api_list_products():
+    products = Product.query.order_by(Product.product_type, Product.name).all()
+    return jsonify({"products": [p.to_dict() for p in products]}), 200
+
+
 @routes_bp.route("/api/orders", methods=["GET"])
 @login_required
 def api_list_orders():
-    # All authenticated users can list orders
-    orders = Order.query.order_by(Order.order_date.desc()).all()
+    # ?active=1 returns only orders with lines still in the kitchen pipeline
+    if request.args.get("active"):
+        orders = _active_orders()
+    else:
+        orders = Order.query.order_by(Order.order_date.desc()).limit(100).all()
     return jsonify({"orders": [o.to_dict() for o in orders]}), 200
 
 
@@ -115,28 +112,38 @@ def api_create_order():
     data = request.get_json(silent=True) or {}
     valid, errors, cleaned = validate_order_payload(data)
     if not valid:
-        # If errors indicate missing referenced entities, return 404
         if any("not found" in e.lower() for e in errors):
             return jsonify({"error": "not found", "details": errors}), 404
         return jsonify({"error": "invalid payload", "details": errors}), 400
 
-    order = Order(customer_id=cleaned["customer_id"], order_type=cleaned.get("order_type"))
+    order = Order(customer_id=cleaned.get("customer_id"), order_type=cleaned.get("order_type"))
     db.session.add(order)
-    db.session.commit()
+    db.session.flush()  # get order.id without a full commit
 
+    table_number = cleaned.get("table_number")
     for ln in cleaned["lines"]:
         unit_price = ln.get("unit_price")
         product_id = ln.get("product_id")
-        # default unit_price to product price when missing
         if unit_price is None and product_id:
-            prod = Product.query.get(product_id)
+            prod = db.session.get(Product, product_id)
             unit_price = prod.price if prod is not None else None
-        ol = OrderLine(order_id=order.id, product_id=product_id, quantity=ln.get("quantity", 1), unit_price=unit_price, special_instructions=ln.get("special_instructions"), order_status=ln.get("order_status", "pending"))
+        ol = OrderLine(
+            order_id=order.id,
+            product_id=product_id,
+            quantity=ln.get("quantity", 1),
+            unit_price=unit_price,
+            special_instructions=ln.get("special_instructions"),
+            order_status=ln.get("order_status", "pending"),
+            table_number=table_number,
+        )
         db.session.add(ol)
+
+    _recalc_order_price(order)
     db.session.commit()
 
-    socketio.emit("order_new", order.to_dict())
-    return jsonify(order.to_dict()), 201
+    payload = order.to_dict()
+    socketio.emit("order_new", payload)
+    return jsonify(payload), 201
 
 
 @routes_bp.route("/api/orders/<int:order_id>", methods=["PUT", "PATCH"])
@@ -148,25 +155,68 @@ def api_update_order(order_id):
         return jsonify({"error": "Order not found"}), 404
 
     data = request.get_json(silent=True) or {}
-    # Allow updating order header fields (order_type, order_price) by admin
     if "order_type" in data:
-        if current_user.role != "admin":
-            return {"error": "Forbidden to change order header"}, 403
         order.order_type = data.get("order_type")
     if "order_price" in data:
-        if current_user.role != "admin":
-            return {"error": "Forbidden to change order header"}, 403
         order.order_price = data.get("order_price")
 
     db.session.commit()
     return jsonify(order.to_dict()), 200
 
 
+@routes_bp.route("/api/orders/<int:order_id>/lines", methods=["PUT"])
+@login_required
+@roles_required("front", "admin")
+def api_replace_order_lines(order_id):
+    """Atomically replace all lines on an order (edit-ticket flow)."""
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
 
-# Order line specific endpoints (kitchen updates go here)
+    data = request.get_json(silent=True) or {}
+    valid, errors, cleaned = validate_order_payload({
+        "customer_id": order.customer_id,
+        "order_type": order.order_type,
+        "lines": data.get("lines"),
+        "table_number": data.get("table_number"),
+    })
+    if not valid:
+        if any("not found" in e.lower() for e in errors):
+            return jsonify({"error": "not found", "details": errors}), 404
+        return jsonify({"error": "invalid payload", "details": errors}), 400
+
+    # Delete existing lines, then insert the replacement set in one transaction.
+    for line in list(order.lines):
+        db.session.delete(line)
+
+    table_number = cleaned.get("table_number")
+    for ln in cleaned["lines"]:
+        unit_price = ln.get("unit_price")
+        product_id = ln.get("product_id")
+        if unit_price is None and product_id:
+            prod = db.session.get(Product, product_id)
+            unit_price = prod.price if prod is not None else None
+        db.session.add(OrderLine(
+            order_id=order.id,
+            product_id=product_id,
+            quantity=ln.get("quantity", 1),
+            unit_price=unit_price,
+            special_instructions=ln.get("special_instructions"),
+            order_status=ln.get("order_status", "pending"),
+            table_number=table_number,
+        ))
+
+    _recalc_order_price(order)
+    db.session.commit()
+
+    payload = order.to_dict()
+    socketio.emit("order_replaced", payload)
+    return jsonify(payload), 200
+
+
 @routes_bp.route("/api/order_lines/<int:line_id>/status", methods=["PATCH"])
 @login_required
-@roles_required("kitchen", "admin")
+@roles_required("kitchen", "front", "admin")
 def api_update_order_line_status(line_id):
     line = OrderLine.query.get(line_id)
     if not line:
@@ -175,9 +225,15 @@ def api_update_order_line_status(line_id):
     status = data.get("order_status")
     if not status:
         return jsonify({"error": "order_status required"}), 400
+    if status not in ALLOWED_ORDER_STATUSES:
+        return jsonify({"error": f"order_status must be one of {sorted(ALLOWED_ORDER_STATUSES)}"}), 400
     line.order_status = status
     db.session.commit()
-    socketio.emit("order_update", {"order_line_id": line.id, "order_id": line.order_id, "order_status": status})
+    socketio.emit("order_update", {
+        "order_line_id": line.id,
+        "order_id": line.order_id,
+        "order_status": status,
+    })
     return jsonify(line.to_dict()), 200
 
 
@@ -188,7 +244,6 @@ def api_create_order_line():
     data = request.get_json(silent=True) or {}
     valid, errors, cleaned = validate_order_line_payload(data)
     if not valid:
-        # Map existence errors to 404 so clients can distinguish validation vs missing resources
         if any("not found" in e.lower() for e in errors):
             return jsonify({"error": "not found", "details": errors}), 404
         return jsonify({"error": "invalid payload", "details": errors}), 400
@@ -197,12 +252,21 @@ def api_create_order_line():
     product_id = cleaned["product_id"]
     quantity = cleaned["quantity"]
     unit_price = cleaned.get("unit_price")
-    # If unit_price not provided, fetch product price
     if unit_price is None and product_id:
-        prod = Product.query.get(product_id)
+        prod = db.session.get(Product, product_id)
         unit_price = prod.price if prod is not None else None
-    ol = OrderLine(order_id=order_id, product_id=product_id, quantity=quantity, unit_price=unit_price, order_status=cleaned.get("order_status", "pending"))
+    ol = OrderLine(
+        order_id=order_id,
+        product_id=product_id,
+        quantity=quantity,
+        unit_price=unit_price,
+        order_status=cleaned.get("order_status", "pending"),
+    )
     db.session.add(ol)
+
+    order = db.session.get(Order, order_id)
+    if order:
+        _recalc_order_price(order)
     db.session.commit()
     socketio.emit("order_update", ol.to_dict())
     return jsonify(ol.to_dict()), 201
