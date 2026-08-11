@@ -18,9 +18,15 @@ from app.models import User
 # Allow overriding via env; default to local sqlite file
 os.environ.setdefault('DATABASE_URL', 'sqlite:///./.local_admin.db')
 
+ALLOWED_ROLES = {'front', 'kitchen', 'admin'}
+
 username = sys.argv[1] if len(sys.argv) > 1 else 'bootstrap_admin'
 password = sys.argv[2] if len(sys.argv) > 2 else 'AdminS3cret!'
 role = sys.argv[3] if len(sys.argv) > 3 else 'admin'
+
+if role not in ALLOWED_ROLES:
+    print(f"error: role must be one of {sorted(ALLOWED_ROLES)}, got {role!r}")
+    sys.exit(1)
 
 app = create_app()
 with app.app_context():

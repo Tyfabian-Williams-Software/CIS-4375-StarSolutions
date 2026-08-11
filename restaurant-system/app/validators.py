@@ -93,6 +93,7 @@ def validate_order_payload(data):
 
             cleaned_lines.append({
                 "product_id": prod,
+                "product": prod_obj,
                 "quantity": qty,
                 "unit_price": unit_price,
                 "special_instructions": ln.get("special_instructions"),
@@ -109,7 +110,7 @@ def validate_order_line_payload(data):
     if not isinstance(data, dict):
         return False, ["payload must be a JSON object"], {}
     # detect unknown fields
-    allowed_keys = {"order_id", "product_id", "quantity", "unit_price", "order_status"}
+    allowed_keys = {"order_id", "product_id", "quantity", "unit_price", "order_status", "table_number"}
     extra = set(data.keys()) - allowed_keys
     if extra:
         errors.append(f"unknown fields: {sorted(list(extra))}")
@@ -135,9 +136,18 @@ def validate_order_line_payload(data):
         except (ValueError, TypeError):
             errors.append("product_id must be an integer")
         else:
-            if Product.query.get(product_id) is None:
+            prod_obj = Product.query.get(product_id)
+            if prod_obj is None:
                 errors.append("product not found")
             cleaned["product_id"] = product_id
+            cleaned["product"] = prod_obj
+
+    table_number = data.get("table_number")
+    if table_number is not None:
+        try:
+            cleaned["table_number"] = int(table_number)
+        except Exception:
+            errors.append("table_number must be an integer")
 
     qty = data.get("quantity", 1)
     try:

@@ -58,7 +58,7 @@
 
 <!-- ================= RECENT ORDERS ================= -->
 <section class="recent-orders">
-    <h6 class="fw-bold mb-2">Recent Orders <span class="text-muted fw-normal">(live)</span></h6>
+    <h6 class="fw-bold mb-2"><span class="live-dot"></span>Recent Orders <span class="text-muted fw-normal">(live)</span></h6>
     <div class="recent-orders__list" id="recent-orders">
         {% for order in recent_orders %}
         <div class="recent-order-chip card-surface" data-order-id="{{ order.id }}">
@@ -208,7 +208,7 @@
             cart.clear();
             document.getElementById("cart-notes").value = "";
             renderCart();
-            prependRecent(data);
+            upsertRecent(data);
             toast(`Order #${data.order_id} sent to kitchen ✓`);
         } catch (err) {
             toast("Could not send order: " + err.message);
@@ -218,8 +218,14 @@
     });
 
     /* ---------- Recent orders + live updates ---------- */
-    function prependRecent(order) {
+    function upsertRecent(order) {
         const list = document.getElementById("recent-orders");
+        // Idempotent: drop any existing chip for this order first, so this
+        // works whether it's called from the local submit response or from
+        // a socket broadcast (including the broadcast echoed back to the
+        // terminal that submitted the order).
+        const existing = list.querySelector(`[data-order-id="${order.order_id}"]`);
+        if (existing) existing.remove();
         const chip = document.createElement("div");
         chip.className = "recent-order-chip card-surface";
         chip.dataset.orderId = order.order_id;
@@ -238,6 +244,8 @@
     }
 
     const socket = io();
+    socket.on("order_new", upsertRecent);
+    socket.on("order_replaced", upsertRecent);
     socket.on("order_update", (msg) => {
         const pill = document.querySelector(`.status-pill[data-line-id="${msg.order_line_id}"]`);
         if (pill) {

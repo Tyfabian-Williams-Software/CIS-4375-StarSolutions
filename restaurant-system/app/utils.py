@@ -11,6 +11,11 @@ from flask import request, jsonify, redirect, url_for
 from flask_login import current_user
 
 
+def wants_json_response():
+    """True if the current request should get a JSON error instead of an HTML redirect."""
+    return request.is_json or request.headers.get("Accept", "").lower().startswith("application/json")
+
+
 def roles_required(*allowed_roles):
     """Decorator to require that the current_user has one of the allowed roles.
 
@@ -26,8 +31,7 @@ def roles_required(*allowed_roles):
         def wrapped(*args, **kwargs):
             # Not authenticated
             if not current_user.is_authenticated:
-                # If it's an AJAX/JSON/API call, return JSON 401, else redirect to login
-                if request.is_json or request.headers.get("Accept", "").lower().startswith("application/json"):
+                if wants_json_response():
                     return jsonify({"error": "Authentication required"}), 401
                 return redirect(url_for("auth.login"))
 
@@ -37,7 +41,7 @@ def roles_required(*allowed_roles):
 
             # Check role membership
             if current_user.role not in allowed_roles:
-                if request.is_json or request.headers.get("Accept", "").lower().startswith("application/json"):
+                if wants_json_response():
                     return jsonify({"error": "Forbidden"}), 403
                 # For views, redirect to login (or you might choose a 403 page)
                 return redirect(url_for("auth.login"))
