@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Joyeuse's Caribbean Creole Cuisine &amp; Bar{% endblock %}
+
+{% block body_class %}is-landing{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="hero-video-container">
+        <video autoplay muted loop playsinline class="hero-video">
+            <source src="{{ url_for('static', filename='JsCCC_background_vid.webm') }}" type="video/webm">
+            <source src="{{ url_for('static', filename='JsCCC_background_vid.mp4') }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="hero-video__scrim"></div>
+    </div>
+    <div class="hero-wave"></div>
+
+    <div class="hero-logo">
+        <img src="{{ url_for('static', filename="J'sCCClogo.png") }}"
+             alt="Joyeuse's Caribbean Creole Cuisine &amp; Bar logo">
+    </div>
+
+    <div class="hero-text">
+        <h1>Welcome to Joyeuse's Caribbean Creole Cuisine &amp; Bar!</h1>
+        <p>
+            This is <strong>the</strong> Haitian spot — where Creole heat meets island soul.
+            Come on in and savor Haiti's bold, unforgettable flavors, one bite at a time!
+            From our tender griot and crispy plantains to spicy pikliz, savory stews, and refreshing island drinks,
+            every dish is a celebration of home-cooked comfort and Caribbean flair.
+            Here, the rhythm of Haitian culture blends with the warmth of Florida's sunshine —
+            bringing family, flavor, and good vibes together at one table.
+        </p>
+        <a class="btn-brand btn-brand--lg" href="{{ url_for('auth.login') }}">Staff Log In</a>
+    </div>
+</section>
+{% endblock %}

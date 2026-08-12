@@ -36,9 +36,9 @@ def create_app():
     # Return JSON 401 for API requests instead of redirecting to login page.
     @login_manager.unauthorized_handler
     def _unauthorized():
-        from flask import request, jsonify, redirect, url_for
-        # Treat requests with JSON content or explicit Accept: application/json as API calls
-        if request.is_json or request.headers.get("Accept", "").lower().startswith("application/json"):
+        from flask import jsonify, redirect, url_for
+        from app.utils import wants_json_response
+        if wants_json_response():
             return jsonify({"error": "Authentication required"}), 401
         return redirect(url_for("auth.login"))
 

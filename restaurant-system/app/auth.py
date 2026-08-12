@@ -6,6 +6,20 @@ from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
+
+def _is_safe_redirect_url(target):
+    """Only allow same-site, relative redirect targets.
+
+    Rejects scheme-relative ("//evil.com") and backslash-prefixed
+    ("/\\evil.com") targets, both of which browsers can normalize into a
+    protocol-relative URL that escapes the site.
+    """
+    if not target or "\\" in target or not target.startswith("/") or target.startswith("//"):
+        return False
+    parsed = urlparse(target)
+    return parsed.scheme == "" and parsed.netloc == ""
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -21,10 +35,8 @@ def login():
 
             # For non-admins, respect a safe 'next' parameter when present
             next_page = request.args.get('next') or request.form.get('next')
-            if next_page:
-                # ensure the redirect target is relative/safe
-                if urlparse(next_page).netloc == '':
-                    return redirect(next_page)
+            if next_page and _is_safe_redirect_url(next_page):
+                return redirect(next_page)
 
             # default role-based redirect for non-admins
             if user.role == "front":

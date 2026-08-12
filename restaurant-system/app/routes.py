@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
@@ -16,9 +16,11 @@ ACTIVE_STATUSES = ("pending", "in_progress", "ready")
 
 
 def _recalc_order_price(order):
-    """Recompute the order header total from its lines."""
+    """Recompute the order header total from its non-cancelled lines."""
     total = Decimal("0")
     for line in list(order.lines):
+        if line.order_status == "cancelled":
+            continue
         if line.unit_price is not None and line.quantity:
             total += Decimal(str(line.unit_price)) * line.quantity
     order.order_price = total
@@ -124,9 +126,8 @@ def api_create_order():
     for ln in cleaned["lines"]:
         unit_price = ln.get("unit_price")
         product_id = ln.get("product_id")
-        if unit_price is None and product_id:
-            prod = db.session.get(Product, product_id)
-            unit_price = prod.price if prod is not None else None
+        if unit_price is None and ln.get("product") is not None:
+            unit_price = ln["product"].price
         ol = OrderLine(
             order_id=order.id,
             product_id=product_id,
@@ -158,7 +159,13 @@ def api_update_order(order_id):
     if "order_type" in data:
         order.order_type = data.get("order_type")
     if "order_price" in data:
-        order.order_price = data.get("order_price")
+        try:
+            order_price = Decimal(str(data.get("order_price")))
+        except (InvalidOperation, TypeError, ValueError):
+            return jsonify({"error": "order_price must be numeric"}), 400
+        if order_price < 0:
+            return jsonify({"error": "order_price must not be negative"}), 400
+        order.order_price = order_price
 
     db.session.commit()
     return jsonify(order.to_dict()), 200
@@ -193,9 +200,8 @@ def api_replace_order_lines(order_id):
     for ln in cleaned["lines"]:
         unit_price = ln.get("unit_price")
         product_id = ln.get("product_id")
-        if unit_price is None and product_id:
-            prod = db.session.get(Product, product_id)
-            unit_price = prod.price if prod is not None else None
+        if unit_price is None and ln.get("product") is not None:
+            unit_price = ln["product"].price
         db.session.add(OrderLine(
             order_id=order.id,
             product_id=product_id,
@@ -228,6 +234,9 @@ def api_update_order_line_status(line_id):
     if status not in ALLOWED_ORDER_STATUSES:
         return jsonify({"error": f"order_status must be one of {sorted(ALLOWED_ORDER_STATUSES)}"}), 400
     line.order_status = status
+    order = db.session.get(Order, line.order_id)
+    if order:
+        _recalc_order_price(order)
     db.session.commit()
     socketio.emit("order_update", {
         "order_line_id": line.id,
@@ -252,19 +261,27 @@ def api_create_order_line():
     product_id = cleaned["product_id"]
     quantity = cleaned["quantity"]
     unit_price = cleaned.get("unit_price")
-    if unit_price is None and product_id:
-        prod = db.session.get(Product, product_id)
-        unit_price = prod.price if prod is not None else None
+    if unit_price is None and cleaned.get("product") is not None:
+        unit_price = cleaned["product"].price
+
+    order = db.session.get(Order, order_id)
+    table_number = cleaned.get("table_number")
+    if table_number is None and order is not None and order.lines:
+        # Inherit the table from existing sibling lines so a line added later
+        # (e.g. via "add item" on an open ticket) stays associated with the
+        # same table as the rest of the order.
+        table_number = order.lines[0].table_number
+
     ol = OrderLine(
         order_id=order_id,
         product_id=product_id,
         quantity=quantity,
         unit_price=unit_price,
         order_status=cleaned.get("order_status", "pending"),
+        table_number=table_number,
     )
     db.session.add(ol)
 
-    order = db.session.get(Order, order_id)
     if order:
         _recalc_order_price(order)
     db.session.commit()

@@ -31,8 +31,12 @@ USER appuser
 # Recommended production ports and Gunicorn settings: use eventlet worker
 EXPOSE 8000
 
+# Keep GUNICORN_WORKERS=1: Socket.IO broadcasts only reach clients connected to
+# the same worker process, so >1 worker silently drops live updates for some
+# clients unless a shared message queue (e.g. Redis) backs socketio. One
+# eventlet worker comfortably handles a single restaurant's concurrent load.
 ENV WORKER_CLASS=eventlet
-ENV GUNICORN_WORKERS=2
+ENV GUNICORN_WORKERS=1
 
 # Entrypoint: read worker class and workers count from environment at container start
 CMD ["/bin/sh", "-c", "gunicorn -k ${WORKER_CLASS} -w ${GUNICORN_WORKERS} -b 0.0.0.0:${PORT:-8000} run:app"]

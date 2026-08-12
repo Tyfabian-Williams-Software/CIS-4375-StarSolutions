@@ -41,7 +41,12 @@ Render is the cheapest low-maintenance host that keeps Socket.IO connections ali
    - `SECRET_KEY` → generate with `python -c "import secrets; print(secrets.token_hex(32))"`
    - `DATABASE_URL` → see database options below
    - `FLASK_ENV` → `production`
-   - `GUNICORN_WORKERS` → `1` (required for SQLite; `2` is fine for MySQL/Postgres)
+   - `GUNICORN_WORKERS` → `1`. Keep this at 1 no matter which database you pick.
+     Socket.IO broadcasts (new orders, status updates) only reach clients connected
+     to the *same* worker process — with 2+ workers, front and kitchen screens will
+     randomly miss live updates depending on which worker they land on. Going above
+     1 worker requires wiring a shared message queue (e.g. Redis) into
+     `app/sockets.py` first; one worker is plenty for a single restaurant's traffic.
 6. Deploy. Render gives you a free HTTPS URL like `https://joyeuses-orders.onrender.com`.
 7. Open a Render **Shell** for the service and run `python scripts/seed_demo.py`
    (after editing it with the real menu + strong passwords).
