@@ -8,8 +8,10 @@ Flask-SocketIO==5.3.6
 # eventlet incompatibilities. Adjust this pin as needed for your deployment.
 eventlet==0.33.3
 # Optional: gevent is an alternative async driver for Socket.IO
-# Gunicorn for process management in production
-gunicorn==20.1.0
+# Gunicorn for process management in production. 22+ dropped the pkg_resources
+# import gunicorn 20.x relied on, which recent setuptools versions no longer
+# ship — older pins crash on startup with "ModuleNotFoundError: pkg_resources".
+gunicorn==23.0.0
 python-dotenv==1.0.1
 PyMySQL==1.1.1
 Werkzeug==3.0.3
